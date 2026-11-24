@@ -142,9 +142,26 @@ class EditorParams {
     var overscanHoles by mutableStateOf("white")        // white / black
     var overscanCarrier by mutableStateOf("none")       // none / black / open
     var overscanEdgeText by mutableStateOf("KODAK PORTRA 400")
-    var overscanFrameNumber by mutableStateOf(0)        // 0 = 由帧种子决定
-    var overscanCameraSeed by mutableStateOf(1)         // 机身（门形状/毛刺/雾化）
-    var overscanFrameSeed by mutableStateOf(1)          // 过片与扫描（漏光/编号）
+    // 0 = 随机（用下面 *_auto 里那一号），1-999 / 1-36 = 按设定值输出。
+    var overscanFrameNumber by mutableStateOf(0)
+    var overscanCameraSeed by mutableStateOf(0)         // 机身（门形状/毛刺/雾化）
+    var overscanFrameSeed by mutableStateOf(0)          // 过片与扫描（漏光/编号）
+    // 滑轨留在 0 时真正生效的那一号：新建参数就随机挑一次，并和上面的设定一起落进侧车。
+    // 这样同一张照片每次预览、每次导出都是同一套磨损与同一个编号，不会因为重算而每帧抖一次；
+    // 想让这张换一套，把滑轨拖回 0（=重新随机一次）。
+    var overscanFrameNumberAuto by mutableStateOf(nextRandom(FRAME_NUMBER_MAX))
+    var overscanCameraSeedAuto by mutableStateOf(nextRandom(SEED_MAX))
+    var overscanFrameSeedAuto by mutableStateOf(nextRandom(SEED_MAX))
+
+    /** 送进引擎的实际值：设定非 0 就用设定，否则用本张随机到的那一号。 */
+    fun effectiveOverscanFrameNumber(): Int = (overscanFrameNumber.takeIf { it != 0 } ?: overscanFrameNumberAuto).coerceIn(1, FRAME_NUMBER_MAX)
+    fun effectiveOverscanCameraSeed(): Int = (overscanCameraSeed.takeIf { it != 0 } ?: overscanCameraSeedAuto).coerceIn(1, SEED_MAX)
+    fun effectiveOverscanFrameSeed(): Int = (overscanFrameSeed.takeIf { it != 0 } ?: overscanFrameSeedAuto).coerceIn(1, SEED_MAX)
+
+    /** 滑轨拖回 0 = 这一项重新随机一次：不重掷的话会沿用上一次的老号，看着像滑了没反应。 */
+    fun rerollOverscanCameraSeed() { overscanCameraSeedAuto = nextRandom(SEED_MAX) }
+    fun rerollOverscanFrameSeed() { overscanFrameSeedAuto = nextRandom(SEED_MAX) }
+    fun rerollOverscanFrameNumber() { overscanFrameNumberAuto = nextRandom(FRAME_NUMBER_MAX) }
     var overscanFog by mutableFloatStateOf(1f)          // 0..4 边缘雾化
     var overscanLeaks by mutableFloatStateOf(0f)        // 0..4 漏光
     var overscanFNumber by mutableFloatStateOf(0f)      // 0=未知（按 f/5.6），门边光晕
@@ -259,6 +276,11 @@ class EditorParams {
         .put("overscan_frame_number", overscanFrameNumber)
         .put("overscan_camera_seed", overscanCameraSeed)
         .put("overscan_frame_seed", overscanFrameSeed)
+        // 0 档随机到的实际值也要落盘：否则重开照片/下次导出会换一套磨损，
+        // 「看到的预览」和「导出的成片」就对不上了。
+        .put("overscan_frame_number_auto", overscanFrameNumberAuto)
+        .put("overscan_camera_seed_auto", overscanCameraSeedAuto)
+        .put("overscan_frame_seed_auto", overscanFrameSeedAuto)
         .put("overscan_fog", overscanFog.toDouble())
         .put("overscan_leaks", overscanLeaks.toDouble())
         .put("overscan_f_number", overscanFNumber.toDouble())
@@ -304,7 +326,16 @@ class EditorParams {
         copied.quarterTurns = quarterTurns; copied.flipH = flipH; copied.flipV = flipV; copied.rotationDeg = rotationDeg
         copied.perspectiveVertical = perspectiveVertical; copied.perspectiveHorizontal = perspectiveHorizontal
         copied.finishedCrop = finishedCrop
+        // 「同步设置」把源照片的参数搬过来，但片边的随机身份不能跟着搬：
+        // 搬过去就是所有照片同一套磨损、同一个画幅编号，0 档的「每张随机」等于失效。
+        // 这三号是这张片自己的，保留它原来的（没有的话 fromJson 已经现随机过了）。
+        val myCameraSeed = overscanCameraSeedAuto
+        val myFrameSeed = overscanFrameSeedAuto
+        val myFrameNumber = overscanFrameNumberAuto
         copyAllFrom(copied)
+        overscanCameraSeedAuto = myCameraSeed
+        overscanFrameSeedAuto = myFrameSeed
+        overscanFrameNumberAuto = myFrameNumber
     }
 
     private fun copyAllFrom(p: EditorParams) {
@@ -346,6 +377,8 @@ class EditorParams {
         overscanGate = p.overscanGate; overscanHoles = p.overscanHoles; overscanCarrier = p.overscanCarrier
         overscanEdgeText = p.overscanEdgeText; overscanFrameNumber = p.overscanFrameNumber
         overscanCameraSeed = p.overscanCameraSeed; overscanFrameSeed = p.overscanFrameSeed
+        overscanFrameNumberAuto = p.overscanFrameNumberAuto
+        overscanCameraSeedAuto = p.overscanCameraSeedAuto; overscanFrameSeedAuto = p.overscanFrameSeedAuto
         overscanFog = p.overscanFog; overscanLeaks = p.overscanLeaks; overscanFNumber = p.overscanFNumber
         dateImprintActive = p.dateImprintActive; dateImprintText = p.dateImprintText; dateImprintStyle = p.dateImprintStyle
         dateImprintPlacement = p.dateImprintPlacement; dateImprintCorner = p.dateImprintCorner
@@ -357,6 +390,22 @@ class EditorParams {
     companion object {
         /** 引擎不印日期的全景画幅（overscan.cpp 的日期块只认 135 / 120）。 */
         internal val PANORAMIC_FORMATS = setOf("135_xpan", "120_6x12", "120_6x17")
+
+        /** 相机种子 / 过片种子：滑轨 0..999，0 = 在 1..999 里随机。 */
+        const val SEED_MAX = 999
+
+        /** 画幅编号：滑轨 0..36，0 = 在 1..36 里随机。 */
+        const val FRAME_NUMBER_MAX = 36
+
+        /**
+         * 0 档随机挑一号，范围 1..max（含端点）。
+         * 给了 [identitySeed]（照片自己的稳定身份，见 EditStore）就按它派生：
+         * 老侧车里没有 `*_auto` 这三项，纯随机的话每重开一次照片就换一套磨损、换一个编号，
+         * 预览和已经导出的成片对不上；派生出来的值同一张照片永远一样。
+         */
+        fun nextRandom(max: Int, identitySeed: Long = 0L, salt: Long = 0L): Int =
+            if (identitySeed == 0L) kotlin.random.Random.nextInt(1, max + 1)
+            else kotlin.random.Random(identitySeed + salt * 7919L).nextInt(1, max + 1)
 
         private val knownFields: Set<String> by lazy {
             EditorParams().toJson().keys().asSequence().toSet() +
@@ -378,8 +427,13 @@ class EditorParams {
          */
         fun grainCeiling(stock: String): Float = (2.0f / ownGrain(stock)).coerceAtLeast(0.05f)
 
-        /** 从 sidecar JSON 恢复参数（缺字段用默认值）。 */
-        fun fromJson(json: JSONObject): EditorParams {
+        /**
+         * 从 sidecar JSON 恢复参数（缺字段用默认值）。
+         * [identitySeed] 是这张照片的稳定身份（一般取 uri 哈希）：只有老存档里
+         * 没有 `*_auto` 三项时才用它派生随机身份，保证同一张老照片每次打开
+         * 都是同一套磨损、同一个编号；新存档直接读回自己存的值，不看这个种子。
+         */
+        fun fromJson(json: JSONObject, identitySeed: Long = 0L): EditorParams {
             HalationModel.requireReadable(json)
             require(!json.has("film_off") || json.get("film_off") is Boolean)
             for (key in listOf("perspective_vertical","perspective_horizontal"))
@@ -504,8 +558,14 @@ class EditorParams {
             p.overscanCarrier = json.optString("overscan_carrier", "none")
             p.overscanEdgeText = json.optString("overscan_edge_text", "KODAK PORTRA 400")
             p.overscanFrameNumber = json.optInt("overscan_frame_number", 0)
-            p.overscanCameraSeed = json.optInt("overscan_camera_seed", 1)
-            p.overscanFrameSeed = json.optInt("overscan_frame_seed", 1)
+            p.overscanCameraSeed = json.optInt("overscan_camera_seed", 0)
+            p.overscanFrameSeed = json.optInt("overscan_frame_seed", 0)
+            // 老存档里没有这三项（以前种子默认 1、编号靠整卷自动递增）：
+            // 读不到就按这张照片的稳定身份派生一个，不会全都挤成同一套磨损，
+            // 也不会每次重开都换一套（预览和已导出的成片要能对上）。
+            p.overscanFrameNumberAuto = json.optInt("overscan_frame_number_auto", 0).takeIf { it in 1..FRAME_NUMBER_MAX } ?: nextRandom(FRAME_NUMBER_MAX, identitySeed, 1)
+            p.overscanCameraSeedAuto = json.optInt("overscan_camera_seed_auto", 0).takeIf { it in 1..SEED_MAX } ?: nextRandom(SEED_MAX, identitySeed, 2)
+            p.overscanFrameSeedAuto = json.optInt("overscan_frame_seed_auto", 0).takeIf { it in 1..SEED_MAX } ?: nextRandom(SEED_MAX, identitySeed, 3)
             p.overscanFog = json.optDouble("overscan_fog", 1.0).toFloat()
             p.overscanLeaks = json.optDouble("overscan_leaks", 0.0).toFloat()
             p.overscanFNumber = json.optDouble("overscan_f_number", 0.0).toFloat()
@@ -593,9 +653,9 @@ class EditorParams {
             // gauge. It is resolved at render time so a sidecar cannot leave
             // stale Portra text after switching stocks.
             .put("overscan_edge_text", StockCatalog.edgeText(filmId, overscanFormat))
-            .put("overscan_frame_number", overscanFrameNumber)
-            .put("overscan_camera_seed", overscanCameraSeed)
-            .put("overscan_frame_seed", overscanFrameSeed)
+            .put("overscan_frame_number", effectiveOverscanFrameNumber())
+            .put("overscan_camera_seed", effectiveOverscanCameraSeed())
+            .put("overscan_frame_seed", effectiveOverscanFrameSeed())
             .put("overscan_fog", overscanFog.toDouble())
             .put("overscan_leaks", overscanLeaks.toDouble())
             .put("overscan_f_number", overscanFNumber.toDouble())

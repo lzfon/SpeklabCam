@@ -59,6 +59,9 @@ object EditStore {
     /** 旧版本可能存下已被删除的材料 id；读参数前先确保材料目录可用，好让修正在解析时生效。 */
     private fun catalog(context: Context) { if (!com.spektralab.android.engine.StockCatalog.isLoaded) runCatching { com.spektralab.android.engine.StockCatalog.load(context) } }
 
+    /** 这张照片的稳定身份种子：老侧车里缺片边随机身份时用它派生，重开不换一套磨损。 */
+    private fun identitySeed(uri: Uri): Long = uri.toString().let { it.hashCode().toLong() * 31L + it.length.toLong() }.let { if (it == 0L) 1L else it }
+
     @Synchronized
     fun load(context: Context, uri: Uri): EditorParams? = checked {
         read(context, uri)?.let { raw ->
@@ -77,7 +80,7 @@ object EditStore {
             for (version in listOf("schema_version", "gradeVersion", "grade_version", "colorPipelineVersion", "color_pipeline_version"))
                 check(!json.has(version) || json.optDouble(version, Double.NaN) == 1.0) { "FUTURE_EDIT_READ_ONLY" }
             catalog(context)
-            EditorParams.fromJson(json)
+            EditorParams.fromJson(json, identitySeed(uri))
         }
     }
 

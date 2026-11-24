@@ -82,38 +82,46 @@ internal fun PrintPanel(vm: EditorViewModel) {
             SliderRow("边缘雾化", vm.params.overscanFog, 0f..4f, "%.1f") { vm.params.overscanFog = it; vm.scheduleRender() }
             SliderRow("漏光", vm.params.overscanLeaks, 0f..4f, "%.1f") { vm.params.overscanLeaks = it; vm.scheduleRender() }
             SliderRow("光圈(门边光晕)", vm.params.overscanFNumber, 0f..64f, "%.1f") { vm.params.overscanFNumber = it; vm.scheduleRender() }
-            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(vm.frameRollLabel(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Text("按导入/拍摄数量自动递增，36 帧一轮回；本张片边帧号 ${vm.params.overscanFrameNumber}",
-                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = { vm.resetFrameRoll() }) { Text("重置编号", fontSize = 12.sp) }
-            }
-            // 画幅编号：开着手动指定，关着按 36 帧一轮回自动递增。
-            ToggleRow("手动画幅编号", vm.frameNumberManual) { vm.setFrameNumberManual(it) }
+            // 画幅编号：0 = 这一张随机排一个（1-36），1-36 = 按设定输出。
+            // 原来的「按导入数量 36 帧一轮回自动递增」和「手动画幅编号」开关都删了。
             SliderRow(
                 label = "画幅编号",
-                value = vm.manualFrameNumber.toFloat(),
-                range = 1f..36f,
+                value = vm.params.overscanFrameNumber.toFloat(),
+                range = 0f..36f,
                 format = "%.0f / 36",
-                enabled = vm.frameNumberManual,
-                resetValue = 1f,
-            ) { vm.setManualFrameNumber(it.toInt()) }
-            Text(
-                if (vm.frameNumberManual) "手动模式：每张都用这个编号，不自动递增。"
-                else "自动模式：按导入/拍摄数量 +1，到 36 回 01。",
-                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+                resetValue = 0f,
+                hint = if (vm.params.overscanFrameNumber == 0)
+                    "0 = 随机：这一张排到 ${"%02d".format(vm.params.effectiveOverscanFrameNumber())}，拖回 0 再随机一次"
+                else "按设定输出；批量导出时开了片边的照片会被重新连号",
+            ) { vm.setOverscanFrameNumber(it.roundToInt()) }
             Text(
                 "片边文字（自动）: ${StockCatalog.edgeText(vm.params.filmId, vm.params.overscanFormat)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             )
-            SliderRow("相机种子", vm.params.overscanCameraSeed.toFloat(), 0f..999f, "%.0f") { vm.params.overscanCameraSeed = it.roundToInt(); vm.scheduleRender() }
-            SliderRow("过片种子", vm.params.overscanFrameSeed.toFloat(), 0f..999f, "%.0f") { vm.params.overscanFrameSeed = it.roundToInt(); vm.scheduleRender() }
+            // 种子：0 = 这一张随机一套（1-999），1-999 = 按设定输出。走 vm 的 setter，
+            // 拖回 0 会重掷一次，否则停在 0 用的还是上一次那套磨损，看着像滑了没反应。
+            SliderRow(
+                label = "相机种子",
+                value = vm.params.overscanCameraSeed.toFloat(),
+                range = 0f..999f,
+                format = "%.0f",
+                resetValue = 0f,
+                hint = if (vm.params.overscanCameraSeed == 0)
+                    "0 = 随机：这一张用种子 ${vm.params.effectiveOverscanCameraSeed()}，拖回 0 再随机一次"
+                else "按设定输出：同一颗机身得到同一套磨损，别的照片填同一个数就能复现",
+            ) { vm.setOverscanCameraSeed(it.roundToInt()) }
+            SliderRow(
+                label = "过片种子",
+                value = vm.params.overscanFrameSeed.toFloat(),
+                range = 0f..999f,
+                format = "%.0f",
+                resetValue = 0f,
+                hint = if (vm.params.overscanFrameSeed == 0)
+                    "0 = 随机：这一张用种子 ${vm.params.effectiveOverscanFrameSeed()}，拖回 0 再随机一次"
+                else "按设定输出：过片与扫描（漏光位置、编号抖动）跟着这个种子走",
+            ) { vm.setOverscanFrameSeed(it.roundToInt()) }
         }
     }
 

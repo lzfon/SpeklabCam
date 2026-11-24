@@ -87,90 +87,89 @@ import java.security.MessageDigest
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------------------------------------------------------
-    // 画幅编号：36 帧一轮回，随导入/拍摄数量自增，可手动重置
+    // 片边随机身份：相机种子 / 过片种子 / 画幅编号，三项滑轨都是
+    // 0 = 这一张随机一个（种子 1-999、编号 1-36），1-N = 按设定值输出。
+    // 原来的「整卷 36 帧自动递增」和「手动画幅编号开关」都已删除。
     // ---------------------------------------------------------------
-    private val frameRollPrefs = application.getSharedPreferences("theia_frame_roll", android.content.Context.MODE_PRIVATE)
-    internal var frameRoll by mutableStateOf(frameRollPrefs.getInt(KEY_FRAME_ROLL, 1).coerceIn(1, FRAME_ROLL_LENGTH))
-        private set
-    private val pendingFrameNumbers: MutableMap<String, Int> = frameRollPrefs.getString(KEY_PENDING_FRAMES, null)
-        ?.let { raw ->
-            runCatching {
-                val json = JSONObject(raw)
-                mutableMapOf<String, Int>().also { map -> json.keys().forEach { map[it] = json.optInt(it, 0) } }
-            }.getOrDefault(mutableMapOf())
-        } ?: mutableMapOf()
+    internal fun setOverscanCameraSeed(seed: Int) {
+        val value = seed.coerceIn(0, EditorParams.SEED_MAX)
+        params.overscanCameraSeed = value
+        // 拖回 0 就当「再随机一次」，否则停在 0 却沿用上一次的号，看着像没反应。
+        if (value == 0) params.rerollOverscanCameraSeed()
+        scheduleRender()
+    }
 
-    /** 预排的画幅编号落盘：App 被杀掉重开后，每张照片的编号仍然是导入时排到的那一号。 */
-    private fun persistPendingFrames() {
-        runCatching {
-            val json = JSONObject()
-            pendingFrameNumbers.forEach { (key, frame) -> json.put(key, frame) }
-            frameRollPrefs.edit().putString(KEY_PENDING_FRAMES, json.toString()).apply()
+    internal fun setOverscanFrameSeed(seed: Int) {
+        val value = seed.coerceIn(0, EditorParams.SEED_MAX)
+        params.overscanFrameSeed = value
+        if (value == 0) params.rerollOverscanFrameSeed()
+        scheduleRender()
+    }
+
+    internal fun setOverscanFrameNumber(number: Int) {
+        val value = number.coerceIn(0, EditorParams.FRAME_NUMBER_MAX)
+        params.overscanFrameNumber = value
+        if (value == 0) params.rerollOverscanFrameNumber()
+        scheduleRender()
+    }
+
+    /** 批量导出前算出来的片边重新编号方案：哪些照片开了片边、各自排到第几号。 */
+    data class BatchEdgePlan(val selected: Int, val edged: Int, val numbers: LinkedHashMap<Uri, Int>)
+    var batchEdgePlan by mutableStateOf<BatchEdgePlan?>(null)
+        private set
+    var batchEdgeChecking by mutableStateOf(false)
+        private set
+
+    fun cancelBatchEdgeNumbering() { batchEdgePlan = null }
+
+    /**
+     * 点「导出所选照片」先走这里：统计勾选照片里有多少张开了片边。
+     * 开了片边的按勾选顺序从 01 开始连号，排到 36 再回到 01 继续；没开片边的不参与重新编号。
+     * 算完先弹确认框，用户点「开始导出」才真正落编号并导出。
+     */
+    fun checkBatchEdgeNumbering() {
+        if (isBatchExporting || isExporting || batchEdgeChecking) return
+        val targets = selectedBatchExportPhotos
+        if (targets.isEmpty()) { toast("先勾选要导出的照片"); return }
+        val activeUri = currentUri
+        // 当前这张用的是还没落盘的实时参数，先在主线程取一次片边状态，别在 IO 线程读 Compose 状态。
+        val activeEdge = params.overscanActive && !params.filmOff
+        batchEdgeChecking = true
+        viewModelScope.launch {
+            val plan = withContext(Dispatchers.IO) {
+                val numbers = LinkedHashMap<Uri, Int>()
+                targets.forEach { uri ->
+                    val edge = if (uri == activeUri) activeEdge
+                    else EditStore.load(app, uri)?.let { it.overscanActive && !it.filmOff } == true
+                    if (edge) numbers[uri] = numbers.size % EditorParams.FRAME_NUMBER_MAX + 1
+                }
+                BatchEdgePlan(targets.size, numbers.size, numbers)
+            }
+            batchEdgeChecking = false
+            batchEdgePlan = plan
         }
     }
 
-    /** 手动画幅编号：开着就固定用 [manualFrameNumber]，关着按 36 帧一轮回自动递增。 */
-    internal var frameNumberManual by mutableStateOf(frameRollPrefs.getBoolean(KEY_FRAME_MANUAL, false))
-        private set
-    internal var manualFrameNumber by mutableStateOf(
-        frameRollPrefs.getInt(KEY_MANUAL_FRAME, 1).coerceIn(1, FRAME_ROLL_LENGTH)
-    )
-        private set
-
-    internal fun setFrameNumberManual(enabled: Boolean) {
-        frameNumberManual = enabled
-        frameRollPrefs.edit().putBoolean(KEY_FRAME_MANUAL, enabled).apply()
-        if (enabled) applyManualFrame() else restoreAutoFrame()
-    }
-
-    /** 关掉手动编号：当前照片立刻回到自动编号（刚消耗的那一号），不用等下一张导入。 */
-    private fun restoreAutoFrame() {
-        val automatic = if (frameRoll > 1) frameRoll - 1 else FRAME_ROLL_LENGTH
-        params.overscanFrameNumber = automatic
-        currentUri?.let { pendingFrameNumbers.remove(it.toString()) }
-        scheduleRender()
-    }
-
-    internal fun setManualFrameNumber(number: Int) {
-        manualFrameNumber = number.coerceIn(1, FRAME_ROLL_LENGTH)
-        frameRollPrefs.edit().putInt(KEY_MANUAL_FRAME, manualFrameNumber).apply()
-        if (frameNumberManual) applyManualFrame()
-    }
-
-    /** 手动编号要立刻体现到当前照片的片边帧号和整卷待用编号上。 */
-    private fun applyManualFrame() {
-        params.overscanFrameNumber = manualFrameNumber
-        photos.forEach { uri -> pendingFrameNumbers[uri.toString()] = manualFrameNumber }
-        persistPendingFrames()
-        scheduleRender()
-    }
-
-    /** 取下一张的画幅编号；手动模式固定返回设定值，否则到 36 后回到 01。 */
-    internal fun nextFrameNumber(): Int {
-        if (frameNumberManual) return manualFrameNumber
-        val frame = frameRoll
-        frameRoll = if (frame >= FRAME_ROLL_LENGTH) 1 else frame + 1
-        frameRollPrefs.edit().putInt(KEY_FRAME_ROLL, frameRoll).apply()
-        return frame
-    }
-
-    internal fun frameRollLabel(): String = "画幅编号 %02d / %d".format(frameRoll, FRAME_ROLL_LENGTH)
-
-    /** 取这张照片的片边编号：优先用导入时排好的号；没有就现排一个并记住。 */
-    internal fun frameNumberFor(uri: Uri): Int {
-        pendingFrameNumbers[uri.toString()]?.let { return it }
-        val frame = nextFrameNumber()
-        pendingFrameNumbers[uri.toString()] = frame
-        persistPendingFrames()
-        return frame
-    }
-
-    /** 手动重置：编号回到 01，并把当前照片的帧号同步为 01。 */
-    internal fun resetFrameRoll() {
-        frameRoll = 1
-        frameRollPrefs.edit().putInt(KEY_FRAME_ROLL, 1).apply()
-        params.overscanFrameNumber = 1
-        scheduleRender()
+    /** 确认框里的「开始导出」：先把新编号落到这些照片自己的参数里，再走原来的批量导出流程。 */
+    fun startBatchExport() {
+        val plan = batchEdgePlan ?: return
+        batchEdgePlan = null
+        val activeUri = currentUri
+        val activeNumber = plan.numbers[activeUri]
+        viewModelScope.launch {
+            if (plan.edged > 0) {
+                withContext(Dispatchers.IO) {
+                    plan.numbers.forEach { (uri, number) ->
+                        if (uri == activeUri) return@forEach      // 当前这张用实时参数，稍后在主线程改
+                        val stored = EditStore.load(app, uri) ?: return@forEach
+                        stored.overscanFrameNumber = number
+                        EditStore.save(app, uri, stored)
+                    }
+                }
+                activeNumber?.let { params.overscanFrameNumber = it }
+            }
+            batchExport()
+        }
     }
 
     private class ExportCancelled : CancellationException("Export cancelled")
@@ -2486,18 +2485,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                             params = saved
                             cropAspect = if (saved.cropW >= 1f && saved.cropH >= 1f) "原始" else "自定义"
                             append("已恢复上次编辑")
-                            // 已有侧车时这张片用不到预排号，也要把它从队列里消耗掉：
-                            // 否则队列只增不减，将来清空编辑会取回一个很旧的号，整卷对不上。
-                            pendingFrameNumbers.remove(uri.toString())
                         } else {
                             params = applyDefaultMaterials(EditorParams())
                             resetGeometry()
-                            // 片边默认关（和纯净原版一致）：新照片打开时不再擅自打开片边，
-                            // 日期由 App 画在画面内。预排的帧号照样取用并落到 overscanFrameNumber，
-                            // 用户之后手动开片边时号码还是连着的，不会跳号。
-                            pendingFrameNumbers.remove(uri.toString())?.let { frame ->
-                                params.overscanFrameNumber = frame
-                            }
+                            // 片边默认关（和纯净原版一致）：新照片打开时不再擅自打开片边，日期由 App 画在画面内。
+                            // 画幅编号也不再按整卷预排：留在 0 就是这一张自己随机到的那一号
+                            // （EditorParams 新建时已经掷好，落在侧车里），用户之后开片边用的就是它。
                         }
                         // 日期后背默认开着：导入时就把这张照片的日期/参数填进去。
                         // 必须在上面 params 整对象被换掉（恢复侧车 / 新建默认参数）之后再做，
@@ -2505,7 +2498,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         // 关掉再打开日期后背才显示正确的拍摄日期。
                         imprintMetadata.applyTo(params)
                         seedHistory(uri, params.copy())
-                        persistPendingFrames()
                         paramsUri = uri
                         sourceExif = exif
                         currentIsRaw = isRaw
@@ -2681,8 +2673,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun openPhotos(uris: List<Uri>) {
         if (isApplyingEdits) return
         if (uris.isEmpty() || isBatchExporting || isExporting) return
-        uris.forEach { uri -> if (pendingFrameNumbers[uri.toString()] == null) pendingFrameNumbers[uri.toString()] = nextFrameNumber() }
-        persistPendingFrames()
         saveCurrentSidecar()
         photos = uris.distinct()
         batchExportSelection = photos.toSet()
@@ -2701,10 +2691,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun addPhotos(uris: List<Uri>, openSelected: Boolean = false) {
         if (isApplyingEdits) return
         if (uris.isEmpty() || isBatchExporting || isExporting) return
-        uris.filterNot { it in photos }.forEach { uri ->
-            if (pendingFrameNumbers[uri.toString()] == null) pendingFrameNumbers[uri.toString()] = nextFrameNumber()
-        }
-        persistPendingFrames()
         saveCurrentSidecar()
         val merged = (photos + uris).distinct()
         val added = merged.filterNot { it in photos }
@@ -2875,11 +2861,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         withContext(Dispatchers.Main.immediate) {
                             renderStage = "第 ${i + 1}/${batchPhotos.size} 张：胶片冲印与相纸扫描"
                         }
-                        val photoParams = edits.getValue(uri).toParams().also { p ->
-                            // 这一张自己的片边编号：侧车里还没落号的（比如从没单独打开过），
-                            // 用导入时预排的那一号，保证整批导出是连号而不是全一样。
-                            if (p.overscanFrameNumber <= 0) p.overscanFrameNumber = frameNumberFor(uri)
-                        }
+                        val photoParams = edits.getValue(uri).toParams()
                         check(photoParams.unreadableColorWheels == null) { app.getString(com.spektralab.android.R.string.wheels_unsupported) }
                         check(photoParams.unreadableChannelMixer == null) { app.getString(com.spektralab.android.R.string.mixer_unsupported) }
                         check(photoParams.unreadableColorAdjustments == null) { app.getString(com.spektralab.android.R.string.color_unsupported) }
