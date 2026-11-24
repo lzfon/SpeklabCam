@@ -1,10 +1,10 @@
-# 定制版修改记录（SpekLab相机 · 无限好运）
+# 本版改动记录（SpekLab相机 · 无限好运）
 
 本文件按 GPL-3.0-or-later 第 2(c) 条要求，标注本工程为**修改版**及其主要改动。
 
 - 上游：Theia（deepspyder），https://github.com/deepspyder/theia ，基线 v0.1.8（提交 `2841a3a`）。
-- 引擎内核：沿用上游官方预编译产物与同步资源，本定制版**未修改引擎 C++/Vulkan 源码**；引擎素材按上游 CC BY-SA 4.0 / 相应许可继续署名共享（见 NOTICE.md）。
-- 本定制版分发的每一个 APK，其完整对应源代码始终发布于本仓库。
+- 引擎内核：沿用上游官方预编译产物与同步资源，本版**未修改引擎 C++/Vulkan 源码**；引擎素材按上游 CC BY-SA 4.0 / 相应许可继续署名共享（见 NOTICE.md）。
+- 本版分发的每一个 APK，其完整对应源代码始终发布于本仓库。
 
 ## 应用名称与包名
 
@@ -77,7 +77,7 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
 
 ### 与上游区分的独立标识
 
-- `applicationId`：`com.spektralab.android`（上游）→ `com.spektralabcam.android`，本定制版 APK 与原版 Theia 可在同一台手机并存安装；`EditVersionProvider` 的 authority 同步调整；
+- `applicationId`：`com.spektralab.android`（上游）→ `com.spektralabcam.android`，本版 APK 与原版 Theia 可在同一台手机并存安装；`EditVersionProvider` 的 authority 同步调整；
 - Gradle 根工程名：`Theia` → `SpekLabCam`；
 - 构建脚本不再写死作者本机的引擎路径，改为 `local.properties` / Gradle property 的 `spektraEngineDir`（默认使用随仓库附带的上游预编译 `libspektralab.so`）；
 - Java/Kotlin 包名 `com.spektralab.android` 与全部上游版权头保持不变（改动风险低、便于继续跟进上游）；
@@ -85,7 +85,7 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
 
 ### 文档
 
-- `README.md` 重写为定制版门面，上游原文保留为 `docs/README.upstream.zh.md` / `docs/README.upstream.en.md`；
+- `README.md` 重写为本版门面，上游原文保留为 `docs/README.upstream.zh.md` / `docs/README.upstream.en.md`；
 - 新增 `COMPLIANCE.md`，逐条对照 GPL-3.0-or-later 与 CC BY-SA 4.0 的署名、源码提供、修改声明义务。
 
 ## 2026-11-24 追加（1.0.0 首发口径，对外发布用这一版）
@@ -97,7 +97,7 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
   「上游与借用的开源项目」全清单（Theia / spektrafilm / SpektraLab 色彩代码 / libspektralab.so / AndroidX·Compose / LibRaw /
   Resource Han Rounded / Lucide / LLVM OpenMP / volk / stb / Liberation 字体，各自许可标注）、作者渠道（GitHub + 抖音）、
   正式签名证书 SHA-256 指纹与自证方法（哈希、权限、自行编译）；版本号改为运行时从安装包读取，界面上不会再出现写死的版本。
-  排版调整：源码仓库块紧跟在抖音介绍之后；标题改「本版作者」；页面上不再出现「定制版」字样；版本区显示「上游内核 Theia v0.1.8」独立一行。
+  排版调整：源码仓库块紧跟在抖音介绍之后；标题改「本版作者」；副标题不再附加版本限定词；版本区显示「上游内核 Theia v0.1.8」独立一行。
 - **官方配方公开**：新增 `presets/speklabcam-recipes-v1.json`（8 支：港片 6 + 《山河故人》2）与 `docs/recipes.md`（逐支详细说明）。
   安装包仍然**不内置任何配方**（`BuiltinPresets.seeds()` 返回空表），配方一律由用户下载后自行导入。
   这些数值为本版作者手工调定，未复制上游任何 profile / LUT / .3fr 数值；仓库内不含任何剧照、海报或影片画面。
@@ -107,3 +107,5 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
   并明确个人渠道链接只是联系方式、不构成许可附加条款；新增「版本规则」「官方配方」「隐私」「安装」四节；NOTICE 增写配方文件的授权与"不含剧照"声明。
 - 签名证书的 DN 字段（`CN=SpeklabCam, OU=Wireless Good Luck`）为已固化信息，改名需换密钥、会导致老用户无法覆盖升级，因此保持不变；
   对外署名一律以 README / NOTICE / 关于页为准。
+- **文档措辞统一**：`NOTICE.md` / `CHANGELOG-custom.md` / `COMPLIANCE.md` 里旧的自称用词一律改为「本版 / 修改版」，
+  与关于页口径一致。纯文档改动，不影响 1.0.0 安装包，也不移动 tag `v1.0.0`。

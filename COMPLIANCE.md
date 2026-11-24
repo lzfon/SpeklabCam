@@ -1,7 +1,7 @@
 # 开源义务对照表（COMPLIANCE）
 
 这份文件把「用了别人的开源代码，自己发布时必须做什么」逐条写清楚，方便自己核对，也方便别人复查。
-本定制版（SpeklabCam / SpekLab相机）用到的第三方来源有三个：**Theia**（GPL-3.0-or-later）、**spektrafilm**（CC BY-SA 4.0）、
+本版（SpeklabCam / SpekLab相机）用到的第三方来源有三个：**Theia**（GPL-3.0-or-later）、**spektrafilm**（CC BY-SA 4.0）、
 随上游附带的**预编译引擎二进制** `libspektralab.so`。
 
 ## GPL-3.0-or-later（应用代码）
@@ -29,7 +29,7 @@
 
 ## 预编译引擎二进制
 
-`app/src/main/jniLibs/arm64-v8a/libspektralab.so` 来自上游 Theia 的官方构建产物，本定制版**没有修改引擎 C++/Vulkan 源码**。
+`app/src/main/jniLibs/arm64-v8a/libspektralab.so` 来自上游 Theia 的官方构建产物，本版**没有修改引擎 C++/Vulkan 源码**。
 如果以后要从源码自编译引擎，那份源码属于 Theia/spektrafilm 仓库（同为 GPL），必须一并提供或指向上游对应版本。
 
 ## 我自己新增的内容

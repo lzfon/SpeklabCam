@@ -1,6 +1,6 @@
 # SpeklabCam（SpekLab相机）— attribution and license notices
 
-## Modified version notice（定制版声明）
+## Modified version notice（修改版声明）
 
 This repository is a **modified version** of Theia, maintained by **无限好运**
 (Douyin: [无限好运](https://v.douyin.com/r0yaZLMMTU8/); fork repository:
