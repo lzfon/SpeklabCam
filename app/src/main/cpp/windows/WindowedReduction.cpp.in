@@ -1,0 +1,45 @@
+    // The original reduction is collective and cannot use a pointwise base.
+    // Transfer bounded slices, keep its original group assignment, then merge
+    // finite maxima without adding or rounding any image sample.
+    bool dispatch_reduce_windows(const std::vector<Arg>& args, size_t threads, std::string& error) {
+        if (args.size() != 3 || !threads || !args[0].buffer || !args[2].buffer) {
+            error = "Invalid windowed maximum request";
+            return false;
+        }
+        const auto meta = window_words(args, 1, 1, error);
+        if (meta.empty() || uint64_t(meta[0]) * 4 > args[0].buffer->used) {
+            error = "Invalid windowed maximum input";
+            return false;
+        }
+        const uint64_t groups = (threads + 255) / 256;
+        const uint64_t grid = groups * 256;
+        const uint64_t elements = (window_budget() / 4 / grid) * grid;
+        if (!elements || groups * 4 > args[2].buffer->used) {
+            error = "Maximum reduction does not fit a legal storage window";
+            return false;
+        }
+        auto scratch = alloc(size_t(std::min<uint64_t>(elements, meta[0])) * 4, error);
+        if (!scratch)
+            return false;
+        ++theia::export_execution::dispatch_stats.windowed_reductions;
+        std::vector<float> merged(groups, -std::numeric_limits<float>::infinity());
+        std::vector<float> values(groups);
+        for (uint64_t first = 0; first < meta[0]; first += elements) {
+            if (theia::export_execution::cancellation &&
+                theia::export_execution::cancellation->load(std::memory_order_relaxed)) {
+                error = "render cancelled";
+                return false;
+            }
+            const uint32_t count = uint32_t(std::min<uint64_t>(elements, meta[0] - first));
+            if (!copy(scratch.get(), 0, args[0].buffer, size_t(first) * 4, size_t(count) * 4, error))
+                return false;
+            const std::vector<Arg> window{Arg::buf(scratch), Arg::inline_bytes(&count, 1), args[2]};
+            if (!dispatch_legacy("spk_reduce_max", window, threads, error) ||
+                !read(args[2].buffer, 0, values.data(), values.size() * 4, error))
+                return false;
+            for (size_t group = 0; group < groups; ++group)
+                merged[group] = std::max(merged[group], values[group]);
+        }
+        auto result = upload(merged.data(), merged.size() * 4, error);
+        return result && copy(args[2].buffer, 0, result.get(), 0, merged.size() * 4, error);
+    }

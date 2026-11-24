@@ -1,0 +1,67 @@
+bool dispatch_iir_columns(const std::vector<Arg>& args, const std::vector<uint32_t>& meta,
+                          std::string& error) {
+    const uint64_t h = meta[0], w = meta[1], limit = window_budget();
+    const uint64_t columns = std::min<uint64_t>(w, std::min<uint64_t>(limit, 32ull * 1024 * 1024) / (h * 12));
+    if (!columns) {
+        error = "IIR column does not fit exact storage window";
+        return false;
+    }
+    for (uint64_t column = 0; column < w; column += columns) {
+        ++theia::export_execution::dispatch_stats.packed_column_batches;
+        const uint32_t count = uint32_t(std::min(columns, w - column));
+        auto image = alloc(size_t(h) * count * 12, error);
+        BufferRef accumulator;
+        if (meta[2])
+            accumulator = alloc(size_t(h) * count * 12, error);
+        if (!image || (meta[2] && !accumulator))
+            return false;
+        auto transfer = [&](const Arg& full, const BufferRef& packed, bool scatter) {
+            if (theia::export_execution::cancellation &&
+                theia::export_execution::cancellation->load(std::memory_order_relaxed)) {
+                error = "render cancelled";
+                return false;
+            }
+            if (!full.buffer || !packed || full.buffer == packed.get() || full.buffer->used < h * w * 12 ||
+                packed.get()->used < h * count * 12) {
+                error = "Invalid IIR column transfer";
+                return false;
+            }
+            // Transfer commands copy float bits directly. Storage-buffer range
+            // limits apply to the packed compute bindings, not these byte copies.
+            // One bounded scratch plane replaces repeated gather/scatter shaders.
+            std::vector<VkBufferCopy> regions;
+            regions.reserve(size_t(h));
+            for (uint64_t row = 0; row < h; ++row) {
+                const VkDeviceSize full_offset = (row * w + column) * 12;
+                const VkDeviceSize packed_offset = row * count * 12;
+                regions.push_back({scatter ? packed_offset : full_offset,
+                                   scatter ? full_offset : packed_offset, uint64_t(count) * 12});
+            }
+            Buffer* src = scatter ? packed.get() : full.buffer;
+            Buffer* dst = scatter ? full.buffer : packed.get();
+            std::lock_guard<std::mutex> lock(dispatch_mutex_);
+            return submit_sync(
+                [&](VkCommandBuffer command) {
+                    device_barrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
+                    vkCmdCopyBuffer(command, src->handle, dst->handle, uint32_t(regions.size()),
+                                    regions.data());
+                    transfer_written(command);
+                },
+                "Vulkan IIR column transfer", error);
+        };
+        if (!transfer(args[0], image, false))
+            return false;
+        if (meta[2] && !transfer(args[3], accumulator, false))
+            return false;
+        const uint32_t words[4] = {uint32_t(h), count, meta[2], 0};
+        std::vector<Arg> band = args;
+        band[0] = band[6] = Arg::buf(image);
+        band[5] = Arg::inline_bytes(words, 4);
+        band[3] = Arg::buf(meta[2] ? accumulator : image);
+        if (!dispatch_windowed("spk_iir_df_acc", band, size_t(count) * 3, error) ||
+            !transfer(args[6], image, true))
+            return false;
+    }
+    return true;
+}

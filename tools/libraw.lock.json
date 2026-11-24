@@ -1,0 +1,12 @@
+{
+  "version": "0.23.0-Snapshot202611",
+  "commit": "a9a14b1970d188c25dade81f8326ff00a6e33649",
+  "url": "https://codeload.github.com/LibRaw/LibRaw/zip/a9a14b1970d188c25dade81f8326ff00a6e33649",
+  "archive_sha256": "8dc5d15096c3fb15f90415a6915f152489ed7c57b3755e7dde7b1ba81e710895",
+  "directory": "LibRaw-a9a14b1970d188c25dade81f8326ff00a6e33649",
+  "verified_files": {
+    "libraw/libraw_version.h": "7a0977a5bf2d5f926086023a150e7b981025f875ec963d68dac9b86e877e319b",
+    "libraw/libraw.h": "51c8fc75569945aa62165769fd5eecad6ea2e8ae0a9b49f0077da16ee4756546",
+    "src/decoders/nikonhe.cpp": "146ef6730983a505d24a994c73a32958d55332ec51db634b7c4b2c1af5cc5df3"
+  }
+}

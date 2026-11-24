@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Theia" parent="Base.Theme.Theia">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+    
+</resources>

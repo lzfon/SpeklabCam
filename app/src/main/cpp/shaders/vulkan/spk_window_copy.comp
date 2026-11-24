@@ -1,0 +1,21 @@
+#version 450
+layout(local_size_x = 256) in;
+layout(binding=0,std430) readonly buffer Source { float v[]; } src;
+layout(binding=1,std430) readonly buffer Meta { uint v[]; } m;
+layout(binding=2,std430) writeonly buffer Destination { float v[]; } dst;
+uint spk_global_index() {
+    return gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x;
+}
+// Gather complete columns, preserving each IIR recurrence's sample order.
+// Scatter is the exact inverse. No colour conversion or floating arithmetic.
+void main() {
+    uint i = spk_global_index();
+    uint width=m.v[0], column=m.v[1], columns=m.v[2], row=m.v[3], rows=m.v[4];
+    if (i >= rows * columns) return;
+    uint y=row+i/columns, x=i%columns;
+    uint full=3u*(y*width+column+x), packed=3u*(y*columns+x);
+    for (uint c=0u;c<3u;++c) {
+        if (m.v[5]==0u) dst.v[packed+c]=src.v[full+c];
+        else dst.v[full+c]=src.v[packed+c];
+    }
+}
