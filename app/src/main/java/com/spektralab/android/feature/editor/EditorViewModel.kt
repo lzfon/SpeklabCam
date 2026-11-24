@@ -630,6 +630,9 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         finishMixerEdit(cancel = true)
         finishWheelEdit(cancel = true)
         params = EditorParams()
+        // 重置会把 params 整个换成默认值，日期/拍摄参数要按当前这张照片重新填一遍，
+        // 否则日期后背会退回系统当天（和导入时那个 bug 同一类）。
+        dateImprintMetadata.applyTo(params)
         cropAspect = "原始"
         scheduleRender()
     }
@@ -2459,15 +2462,14 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     val rawName = queryDisplayName(uri)
                     val name = resolveSourceName(uri) ?: rawName
                     val exif = readExif(uri)
-                    val imprintMetadata = DateImprintMetadata.from(exif)
+                    // 日期后背的数据源：EXIF 的拍摄时刻优先，读不到再用相册 DATE_TAKEN 兜底。
+                    val imprintMetadata = DateImprintMetadata.from(exif, queryDateTakenMs(uri))
                     val imageBounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     runCatching { app.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, imageBounds) } }
                     val isRaw = RawDecoder.isRaw(app, uri, rawName)
                     withContext(Dispatchers.Main.immediate) metadata@{
                         if (photo != photoGeneration) return@metadata
                         dateImprintMetadata = imprintMetadata
-                        // 日期后背默认开着：导入时就把这张照片的日期/数据填进去。
-                        if (params.dateImprintActive) imprintMetadata.applyTo(params)
                         photoInfo = buildList {
                             add("文件名" to (name ?: "未知"))
                             val width = (exif?.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0) ?: 0).takeIf { it > 0 } ?: imageBounds.outWidth
@@ -2497,6 +2499,11 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                                 params.overscanFrameNumber = frame
                             }
                         }
+                        // 日期后背默认开着：导入时就把这张照片的日期/参数填进去。
+                        // 必须在上面 params 整对象被换掉（恢复侧车 / 新建默认参数）之后再做，
+                        // 否则填进的是那个被丢弃的临时 params，首帧会退回「系统当天」，
+                        // 关掉再打开日期后背才显示正确的拍摄日期。
+                        imprintMetadata.applyTo(params)
                         seedHistory(uri, params.copy())
                         persistPendingFrames()
                         paramsUri = uri
@@ -3568,6 +3575,20 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     } catch (e: Exception) {
         uri.lastPathSegment
     }
+
+    /**
+     * 相册那一行的 `DATE_TAKEN`（拍摄时刻，毫秒）。EXIF 里读不到拍摄日期时
+     * （部分 RAW 解析失败、或元数据被聊天工具剥掉），日期后背用它兜底，
+     * 而不是退回系统当天冒充拍摄日期。拿不到就返回 null。
+     */
+    private fun queryDateTakenMs(uri: Uri): Long? = runCatching {
+        val source = EditStore.mediaSourceUri(app, uri) ?: uri
+        app.contentResolver.query(source, arrayOf(MediaStore.Images.Media.DATE_TAKEN), null, null, null)?.use { c ->
+            val col = c.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN)
+            if (col < 0 || !c.moveToFirst() || c.isNull(col)) null
+            else c.getLong(col).takeIf { it > 0L }
+        }
+    }.getOrNull()
 
     // 读取源 EXIF（仅 JPEG/TIFF/DNG；RAW 抛异常时返回 null）。
     private fun readExif(uri: Uri, keepLocation: Boolean = exportKeepLocation): ExifInterface? {

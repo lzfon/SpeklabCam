@@ -109,3 +109,18 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
   对外署名一律以 README / NOTICE / 关于页为准。
 - **文档措辞统一**：`NOTICE.md` / `CHANGELOG-custom.md` / `COMPLIANCE.md` 里旧的自称用词一律改为「本版 / 修改版」，
   与关于页口径一致。纯文档改动，不影响 1.0.0 安装包，也不移动 tag `v1.0.0`。
+
+## 2026-11-24 追加二（**未发布** · 待入下一版 `1.0.1` / versionCode 1001）
+
+- **修复：日期后背把「导入当天」当成拍摄日期。**
+  现象：当天导入的照片，印出来的是今天而不是实际拍摄日期；把日期后背关掉再打开才显示正确。
+  根因：`EditorViewModel.openPhoto()` 里先对临时 `params` 调了一次 `DateImprintMetadata.applyTo()`，
+  随后 `params` 又被「恢复侧车」或「新建默认参数」整对象替换掉，填进去的日期跟着一起被丢弃；
+  字段于是为空，`EditorParams.effectiveDateText()` 的「空 = 退回系统当天」兜底生效，印的就是今天。
+  关掉再打开会调用 `setDateImprintEnabled(true)` → 再次 `applyTo()`，这次作用在最终 `params` 上，所以看起来"动一下就对了"。
+  改动：① `openPhoto()` 把 `applyTo()` 挪到 `params` 定稿之后、`seedHistory()` 之前（撤销栈与侧车从第一帧起就带正确日期）；
+  ② `resetAll()`（重置全部参数）同样补一次 `applyTo()`，避免重置后退回当天；
+  ③ EXIF 完全没有拍摄日期时（部分 RAW 解析失败、元数据被聊天工具剥掉），退回相册记录的 `DATE_TAKEN`，
+  两者都读不到才用系统当天——绝不拿文件修改时间冒充拍摄日期；
+  ④ 参数说明（`HelpText` 9.1）同步这一取数顺序。
+  已发布 tag `v1.0.0` 与 GitHub 上那个 APK **不含本修复**；本条改动只在本地工作树，随下一次发版一起推送并打新 tag。
