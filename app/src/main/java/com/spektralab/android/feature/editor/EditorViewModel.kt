@@ -87,9 +87,9 @@ import java.security.MessageDigest
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------------------------------------------------------
-    // 片边随机身份：相机种子 / 过片种子 / 画幅编号，三项滑轨都是
-    // 0 = 这一张随机一个（种子 1-999、编号 1-36），1-N = 按设定值输出。
-    // 原来的「整卷 36 帧自动递增」和「手动画幅编号开关」都已删除。
+    // 片边随机身份：相机种子 / 过片种子 / 帧号，三项滑轨都是
+    // 0 = 这一张随机一个（种子 1-999、帧号 1-36），1-N = 按设定值输出。
+    // 原来的「整卷 36 帧自动递增」和「手动帧号开关」都已删除。
     // ---------------------------------------------------------------
     internal fun setOverscanCameraSeed(seed: Int) {
         val value = seed.coerceIn(0, EditorParams.SEED_MAX)
@@ -113,12 +113,22 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         scheduleRender()
     }
 
-    /** 批量导出前算出来的片边重新编号方案：哪些照片开了片边、各自排到第几号。 */
+    /** 批量导出前算出来的片边连号方案：哪些照片开了片边、各自排到第几号。 */
     data class BatchEdgePlan(val selected: Int, val edged: Int, val numbers: LinkedHashMap<Uri, Int>)
     var batchEdgePlan by mutableStateOf<BatchEdgePlan?>(null)
         private set
     var batchEdgeChecking by mutableStateOf(false)
         private set
+
+    /**
+     * 导出页（批量）的「带片边照片按帧号顺序导出」开关，默认关闭，进程内保持，冷启动回到关闭。
+     * 关：批量导出就按每张照片自己的设定走（帧号 0 = 各自随机），不统计、不改写。
+     * 开：点「导出所选照片」先统计这批里有几张开了片边，确认后这些照片按勾选顺序从 01 连号
+     *     （排到 36 回到 01 继续，照片够多就循环往复），相机种子 / 过片种子同时强制按
+     *     [EditorParams.SEQUENTIAL_SEED] 输出，让整批接起来像同一卷、同一次扫描；
+     *     没开片边的照片不参与重新编号，两颗种子也不动。
+     */
+    var batchSequentialFrameNumber by mutableStateOf(false)
 
     fun cancelBatchEdgeNumbering() { batchEdgePlan = null }
 
@@ -150,7 +160,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /** 确认框里的「开始导出」：先把新编号落到这些照片自己的参数里，再走原来的批量导出流程。 */
+    /** 确认框里的「开始导出」：先把新帧号和统一种子落到这些照片自己的参数里，再走原来的批量导出流程。 */
     fun startBatchExport() {
         val plan = batchEdgePlan ?: return
         batchEdgePlan = null
@@ -163,10 +173,18 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         if (uri == activeUri) return@forEach      // 当前这张用实时参数，稍后在主线程改
                         val stored = EditStore.load(app, uri) ?: return@forEach
                         stored.overscanFrameNumber = number
+                        // 连号导出要的是「同一颗机身、同一次扫描」：两颗种子一律按 1 输出，
+                        // 不然每张各自随机一套磨损，接成一条还是散的。
+                        stored.overscanCameraSeed = EditorParams.SEQUENTIAL_SEED
+                        stored.overscanFrameSeed = EditorParams.SEQUENTIAL_SEED
                         EditStore.save(app, uri, stored)
                     }
                 }
-                activeNumber?.let { params.overscanFrameNumber = it }
+                if (activeNumber != null) {
+                    params.overscanFrameNumber = activeNumber
+                    params.overscanCameraSeed = EditorParams.SEQUENTIAL_SEED
+                    params.overscanFrameSeed = EditorParams.SEQUENTIAL_SEED
+                }
             }
             batchExport()
         }
@@ -839,6 +857,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         smartDevelopStyle = SmartDevelopStyle.Recipe.id
                         smartDevelopRecipe = recipeName
                         smartDevelopSummary = recipeNote
+                        // 片边的随机身份不属于任何配方（EditGroup.LOCAL_FIELDS），仓库里那 8 支自带配方
+                        // 也确认一个 overscan_* 键都没写。这里显式复位一次，是为了清掉照片上可能残留的
+                        // 老值：旧版本曾按整卷预排把帧号/种子存成非 0，套完配方还挂着那些号。
+                        // 复位成 0 = 这一张自己随机一套，和新建照片的默认口径完全一致。
+                        overscanCameraSeed = 0; overscanFrameSeed = 0; overscanFrameNumber = 0
+                        rerollOverscanCameraSeed(); rerollOverscanFrameSeed(); rerollOverscanFrameNumber()
                     }
                     target.copy(after = EditSnapshot.capture(applied))
                 })

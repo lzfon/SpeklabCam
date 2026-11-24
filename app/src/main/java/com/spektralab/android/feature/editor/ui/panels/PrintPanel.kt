@@ -82,17 +82,17 @@ internal fun PrintPanel(vm: EditorViewModel) {
             SliderRow("边缘雾化", vm.params.overscanFog, 0f..4f, "%.1f") { vm.params.overscanFog = it; vm.scheduleRender() }
             SliderRow("漏光", vm.params.overscanLeaks, 0f..4f, "%.1f") { vm.params.overscanLeaks = it; vm.scheduleRender() }
             SliderRow("光圈(门边光晕)", vm.params.overscanFNumber, 0f..64f, "%.1f") { vm.params.overscanFNumber = it; vm.scheduleRender() }
-            // 画幅编号：0 = 这一张随机排一个（1-36），1-36 = 按设定输出。
-            // 原来的「按导入数量 36 帧一轮回自动递增」和「手动画幅编号」开关都删了。
+            // 帧号：0 = 这一张随机排一个（1-36），1-36 = 按设定输出。
+            // 原来的「按导入数量 36 帧一轮回自动递增」和「手动帧号」开关都删了。
             SliderRow(
-                label = "画幅编号",
+                label = "帧号",
                 value = vm.params.overscanFrameNumber.toFloat(),
                 range = 0f..36f,
                 format = "%.0f / 36",
                 resetValue = 0f,
                 hint = if (vm.params.overscanFrameNumber == 0)
                     "0 = 随机：这一张排到 ${"%02d".format(vm.params.effectiveOverscanFrameNumber())}，拖回 0 再随机一次"
-                else "按设定输出；批量导出时开了片边的照片会被重新连号",
+                else "按设定输出；批量导出页打开「带片边照片按帧号顺序导出」时会被重新连号",
             ) { vm.setOverscanFrameNumber(it.roundToInt()) }
             Text(
                 "片边文字（自动）: ${StockCatalog.edgeText(vm.params.filmId, vm.params.overscanFormat)}",

@@ -56,10 +56,11 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
     var customSizeDialog by rememberSaveable { mutableStateOf(false) }
     var namingDialog by rememberSaveable { mutableStateOf(false) }
     var recipeManager by rememberSaveable { mutableStateOf(false) }
-    // 导出页分栏折叠状态：四栏默认为展开，收起后本次会话内保持。
-    var formatOpen by rememberSaveable { mutableStateOf(true) }
-    var metadataOpen by rememberSaveable { mutableStateOf(true) }
-    var recipeOpen by rememberSaveable { mutableStateOf(true) }
+    // 导出页分栏折叠状态：按用户要求四栏默认全部收起，展开后本次会话内保持；
+    // 「高级设置」(advanced) 本来就是默认收起。
+    var formatOpen by rememberSaveable { mutableStateOf(false) }
+    var metadataOpen by rememberSaveable { mutableStateOf(false) }
+    var recipeOpen by rememberSaveable { mutableStateOf(false) }
     val processing = vm.busy || vm.isExporting || vm.isBatchExporting
     val exporting = vm.isExporting || vm.isBatchExporting
     val selectedCount = vm.selectedBatchExportPhotos.size
@@ -226,8 +227,28 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
         Column(Modifier.widthIn(max = 600.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (exporting) ExportInlineProgress(vm)
-            // 批量导出不再直接开跑：点一下先统计这批里有几张开了片边，弹框确认后才导出并重新连号。
-            Button(onClick = { if (batch) vm.checkBatchEdgeNumbering() else vm.export() },
+            // 批量页的连号开关，默认关闭：
+            // 关 → 点按钮直接按每张照片自己的参数导出，不统计也不改写；
+            // 开 → 点按钮先统计这批里有几张开了片边，弹框确认后才连号（并把两颗种子强制按 1）并导出。
+            if (batch) {
+                com.spektralab.android.ui.components.ToggleRow(
+                    "带片边照片按帧号顺序导出", vm.batchSequentialFrameNumber, enabled = !processing,
+                ) { vm.batchSequentialFrameNumber = it }
+                Text(
+                    if (vm.batchSequentialFrameNumber)
+                        "已打开：导出前统计带片边的照片，按勾选顺序从 01 开始连号，排到 36 回到 01 继续；同时相机种子、过片种子强制按 1 输出。"
+                    else "默认关闭：每张照片按自己的「帧号」设定导出（0 = 各自随机），不改写任何参数。",
+                    fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                )
+            }
+            Button(onClick = {
+                when {
+                    batch && vm.batchSequentialFrameNumber -> vm.checkBatchEdgeNumbering()
+                    batch -> vm.batchExport()
+                    else -> vm.export()
+                }
+            },
                 enabled = !processing && !vm.batchEdgeChecking && (if (batch) selectedCount > 0 else vm.hasPhoto),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = TheiaShapes.control) {
                 Icon(Icons.Rounded.SaveAlt, null, modifier = Modifier.size(18.dp))
@@ -260,25 +281,19 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
         })
     }
 
-    // 统计完先弹这个确认框：告诉用户这批里有几张开了片边、准备各自排到第几号，
-    // 点「开始导出」才真的把编号落到照片参数里并开始导出。
+    // 连号开关打开时，点「导出所选照片」先统计再弹这个确认框：
+    // 说清这批有几张带片边、将怎样连号，点「开始导出」才真正改写这些照片的参数并开始导出。
     vm.batchEdgePlan?.let { plan ->
-        val targets = vm.selectedBatchExportPhotos
-        val preview = plan.numbers.entries.take(12).joinToString("  ") { (uri, number) ->
-            val pos = (targets.indexOf(uri) + 1).takeIf { it > 0 } ?: 0
-            "#$pos→${"%02d".format(number)}"
-        } + if (plan.edged > 12) " …" else ""
         AlertDialog(
             onDismissRequest = vm::cancelBatchEdgeNumbering,
-            title = { Text("片边画幅编号", fontWeight = FontWeight.SemiBold) },
+            title = { Text("片边连续帧号", fontWeight = FontWeight.SemiBold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("勾选 ${plan.selected} 张，其中 ${plan.edged} 张带片边。", fontSize = 14.sp, lineHeight = 20.sp)
+                    Text("勾选${plan.selected}张，其中${plan.edged}张带片边。", fontSize = 14.sp, lineHeight = 20.sp)
                     if (plan.edged > 0) {
-                        Text("这 ${plan.edged} 张按勾选顺序从 01 开始连号，排到 36 回到 01 继续；不带片边的 ${plan.selected - plan.edged} 张不参与重新编号。",
+                        Text("这${plan.edged}张按勾选顺序从01开始连号，排到36回到01继续；不带片边的${plan.selected - plan.edged}张不参与重新编号。",
                             fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(preview, fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("重新编号会覆盖这些照片「画幅编号」里原来的设定（含 0=随机），导出后侧车按新号保存。",
+                        Text("重新编号会覆盖这些照片原设定帧号。",
                             fontSize = 12.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         Text("这批没有照片开片边，按各自现有参数直接导出。",
