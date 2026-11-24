@@ -20,10 +20,12 @@ To keep this fork installable next to upstream Theia, the Android application id
 from `com.spektralab.android` (upstream) to `com.spektralabcam.android`. Java/Kotlin package
 names, resource ids and upstream copyright headers are left untouched.
 
-Versioning: public releases use SemVer 2.0 (`1.0.0`, `1.1.0`, `1.0.1`), with the upstream base
-recorded as build metadata in `versionName` (e.g. `1.0.0+theia-v0.1.8`) and a monotonically
-increasing `versionCode` (starting at 1000). Internal debug counters (v87, v88 …) never appear
-in tags, release titles or the app. See [README.md](README.md#版本规则).
+Versioning: public releases use SemVer 2.0 in `versionName` with no suffix at all (`1.0.0`, `1.1.0`,
+`1.0.1`). The upstream base is recorded on a separate line in the in-app About screen, in the Release
+notes and in this file — it is deliberately **not** appended to `versionName`, because Android settings
+pages show that string verbatim. `versionCode` increases monotonically starting at 1000. Internal
+debug counters (v87, v88 …) never appear in tags, release titles or the app.
+See [README.md](README.md#版本规则).
 
 This fork is not affiliated with, endorsed by, or representing deepspyder or Andrea Volpato;
 their copyright and license notices below remain in effect.
@@ -87,6 +89,25 @@ The engine and dependency paths above describe the default sibling checkout
 layout; those files are not all part of this Android repository. Preserve the
 corresponding license and copyright files when distributing those components.
 AndroidX and other build dependencies retain their own notices and licenses.
+
+## Film recipes (presets/)
+
+[presets/speklabcam-recipes-v1.json](presets/speklabcam-recipes-v1.json) contains eight colour recipes
+authored by the maintainer of this fork (无限好运), each of which is a set of numeric darkroom and
+grading parameters plus a short textual note. They are original to this fork — no upstream profile,
+LUT or `.3fr` value is copied into them — and they are distributed under the same
+**GPL-3.0-or-later** terms as the rest of the code in this repository. They are **not** bundled in
+the APK: users download and import them deliberately.
+
+The recipes select film and paper stocks by their existing identifiers (`kodak_vision3_500t`,
+`kodak_2383`, `kodak_2393`, `kodak_vision3_250d`, `cinestill_800t`). The imaging data behind those
+identifiers is upstream spektrafilm material and stays under CC BY-SA 4.0 with the attribution
+requirements described above; importing a recipe does not change that.
+
+Each recipe is named after a film whose overall colour mood it attempts to describe in words.
+**This repository contains no stills, screenshots, posters or frames from any of those films** —
+the titles are descriptive references only, and the rights to those works and to any imagery from
+them belong to their respective rightsholders.
 
 ## Screenshots and names
 

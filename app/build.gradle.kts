@@ -28,10 +28,11 @@ android {
         applicationId = "com.spektralabcam.android"
         minSdk = 26
         targetSdk = 36
-        // 对外版本用语义化版本（SemVer 2.0），上游基座写在 + 号之后：1.0.0+theia-v0.1.8
         // versionCode 从 1000 起，每发一个包只加 1，永不回退、永不复用（内部调试号 v87/v88 不进公开版本）。
         versionCode = 1000
-        versionName = "1.0.0+theia-v0.1.8"
+        // 对外版本用语义化版本（SemVer 2.0）。versionName 只放短号本身，不带任何后缀
+        // （手机“应用信息 / 应用软件详情”里显示的就是这一串）；上游基座版本单独标注在关于页与仓库文档里。
+        versionName = "1.0.0"
         testInstrumentationRunner = "com.spektralab.android.FunctionalAuditInstrumentation"
 
         // Vulkan 与 LibRaw 在 64 位 ARM 上最稳；加 x86_64 方便在模拟器上跑。

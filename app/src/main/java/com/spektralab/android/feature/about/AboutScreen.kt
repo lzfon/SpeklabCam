@@ -56,8 +56,10 @@ import kotlinx.coroutines.launch
  * 保证界面显示的版本与实际安装包永远一致。
  * ------------------------------------------------------------------------- */
 
-/** 本定制版（无限好运 / 抖音：无限好运）的源码发布地址。 */
+/** 本版（作者：无限好运）的源码发布地址。 */
 internal const val MODDING_REPOSITORY_URL = "https://github.com/lzfon/SpeklabCam"
+/** 本版所依据的上游内核基座，只在关于页与仓库文档里标注，不进 versionName。 */
+internal const val THEIA_ENGINE_BASELINE = "v0.1.8"
 /** 作者的抖音主页，更新记录与安装教程都在这里。 */
 internal const val AUTHOR_DOUYIN_URL = "https://v.douyin.com/r0yaZLMMTU8/"
 internal const val AUTHOR_DOUYIN_NAME = "无限好运"
@@ -79,9 +81,8 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(info).toString()
         }.getOrDefault("" to "")
     }
-    // versionName 形如 1.0.0+theia-v0.1.8：主体与上游基座分开显示，别把加号那串直接摊给用户看。
-    val versionMain = versionInfo.first.substringBefore('+').trim()
-    val versionBuildMeta = versionInfo.first.substringAfter('+', "").trim()
+    // versionName 里就是对外版本号，不加任何后缀；上游基座单独用常量标注，避免手机“应用信息”里出现一串加号尾巴。
+    val versionMain = versionInfo.first.trim()
     val versionCode = versionInfo.second
     val uriHandler = LocalUriHandler.current
     val clipboard = LocalClipboardManager.current
@@ -124,17 +125,16 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Text("SpekLab相机", style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.semantics { heading() })
                 Spacer(Modifier.height(6.dp))
-                Text("胶片与暗房模拟 · 定制版", style = MaterialTheme.typography.bodyMedium,
+                Text("胶片与暗房模拟", style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(10.dp))
                 SelectionContainer {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(if (versionMain.isNotBlank()) "版本 $versionMain" else "版本",
+                        Text(if (versionInfo.first.isNotBlank()) "版本 $versionMain" else "版本",
                             style = MaterialTheme.typography.titleSmall)
-                        if (versionBuildMeta.isNotBlank()) {
-                            Text("上游基座 $versionBuildMeta", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text("上游内核 Theia $THEIA_ENGINE_BASELINE",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (versionCode.isNotBlank()) {
                             Text("versionCode $versionCode（只增不减，覆盖安装与版本校验用）",
                                 style = MaterialTheme.typography.bodySmall,
@@ -147,8 +147,8 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(Modifier.height(20.dp))
 
-                // ---- 现作者与渠道 ----
-                Text("现作者", style = MaterialTheme.typography.labelMedium,
+                // ---- 本版作者与渠道 ----
+                Text("本版作者", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("无限好运", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(12.dp))
@@ -170,6 +170,38 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     Spacer(Modifier.width(8.dp))
                     Text("复制抖音链接")
                 }
+
+                Spacer(Modifier.height(14.dp))
+                Text("本版源码仓库", style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.semantics { heading() })
+                Spacer(Modifier.height(8.dp))
+                SelectionContainer {
+                    Text(MODDING_REPOSITORY_URL, style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = { open(MODDING_REPOSITORY_URL) },
+                    shape = TheiaShapes.control,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Rounded.OpenInNew, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("打开源码仓库")
+                }
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(MODDING_REPOSITORY_URL))
+                    scope.launch { snackbar.showSnackbar("仓库地址已复制") }
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("复制仓库地址")
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("官方配方不内置在安装包里：配方文件与逐支文字说明放在仓库 presets/ 与 docs/recipes.md。" +
+                    "下载后在 App 里导入：首页点「智能配方」→「增加我的配方」→ 底部「导入配方」" +
+                    "（编辑页扳手菜单里的「编辑配方」是同一个入口）。",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Spacer(Modifier.height(20.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -216,7 +248,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     "· Theia（前身 SpektraLab Android）— deepspyder — 应用本体与全部 Android 工程 — GPL-3.0-or-later\n" +
                     "· spektrafilm — Andrea Volpato — 胶片模型、档案与 LUT、色彩科学内核 — CC BY-SA 4.0\n" +
                     "· SpektraLab（macOS/iOS 原版）— 版印后色彩调整（vibrance 与八色带 HSL）的数学来源 — GPL-3.0-or-later\n" +
-                    "· libspektralab.so — 上游官方预编译引擎，本定制版未修改引擎 C++/Vulkan 源码 — 同上\n" +
+                    "· libspektralab.so — 上游官方预编译引擎，本项目未修改引擎 C++/Vulkan 源码 — 同上\n" +
                     "· Jetpack Compose / AndroidX（core、lifecycle、exifinterface、heifwriter、documentfile、splashscreen）— Apache-2.0\n" +
                     "· LibRaw — RAW 解码 — LGPL-2.1 / CDDL-1.0 双许可\n" +
                     "· Resource Han Rounded CN — 界面与字体后背 — SIL Open Font License 1.1\n" +
@@ -224,7 +256,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     "· LLVM OpenMP runtime — Apache-2.0（含 LLVM 例外条款）\n" +
                     "· volk — MIT · stb — public domain / MIT · Liberation 印像字体 — OFL\n\n" +
                     "完整逐条声明见仓库 NOTICE.md、licenses/ 与 app/src/main/assets/licenses/；" +
-                    "义务对照见 COMPLIANCE.md。本定制版与 deepspyder、Andrea Volpato 无隶属或背书关系。",
+                    "义务对照见 COMPLIANCE.md。本项目与 deepspyder、Andrea Volpato 无隶属或背书关系。",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { open(PROJECT_REPOSITORY_URL) }) { Text("Theia 原仓库") }
@@ -235,7 +267,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Text("免费使用，源码公开", style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary, modifier = Modifier.semantics { heading() })
                 Spacer(Modifier.height(12.dp))
-                Text("本定制版不收取下载、安装或使用费用。程序代码沿用上游的 GPL-3.0-or-later 授权发布；" +
+                Text("本版本不收取下载、安装或使用费用。程序代码沿用上游的 GPL-3.0-or-later 授权发布；" +
                     "任何人可以使用、修改、再分发，但分发时必须同时满足下面几条。",
                     style = MaterialTheme.typography.bodyLarge)
 
@@ -252,33 +284,6 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     "· 上面这些是本项目的全部要求。抖音与 GitHub 链接只是作者的联系方式，" +
                     "再分发时你可以替换成你自己的联系方式。",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                Spacer(Modifier.height(16.dp))
-                Text("本定制版源码", style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.semantics { heading() })
-                Spacer(Modifier.height(8.dp))
-                SelectionContainer {
-                    Text(MODDING_REPOSITORY_URL, style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = { open(MODDING_REPOSITORY_URL) },
-                    shape = TheiaShapes.control,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Rounded.OpenInNew, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("打开本定制版源码仓库")
-                }
-                TextButton(onClick = {
-                    clipboard.setText(AnnotatedString(MODDING_REPOSITORY_URL))
-                    scope.launch { snackbar.showSnackbar("仓库地址已复制") }
-                }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("复制仓库地址")
-                }
 
                 Spacer(Modifier.height(20.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -351,7 +356,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("如果你为它付过钱", style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("本定制版与原版项目均不收费。若你是付费获得的，请向收费方申请退款；" +
+                        Text("本版本与上游原版项目均不收费。若你是付费获得的，请向收费方申请退款；" +
                             "下载与更新请以公开仓库为准。",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }

@@ -3,11 +3,11 @@ package com.spektralab.android.data.local
 import com.spektralab.android.core.model.EditTemplate
 
 /**
- * 出厂内置配方：现在一个都不内置。
+ * 出厂内置配方：不内置任何配方。
  *
- * 2026-11-22 第五版：按用户要求把「伟大的长征」整套彻底撤掉，不留内置条目。
- * retiredNames 里留着历史用过的名字，启动时会把这些旧条目从「我的配方」里清掉。
- * 以后要恢复内置，只需要往 seeds() 里加一条，并把 VERSION 加一。
+ * 应用包里永远不带预设的色彩配方，用户的「我的配方」只装他自己存或他自己导入的东西。
+ * 官方配方以文件形式放在仓库 presets/ 目录，由用户自行下载导入。
+ * 以后如果要恢复内置，往 seeds() 里加一条并把 VERSION 加一即可。
  */
 internal object BuiltinPresets {
     const val VERSION = 5
@@ -16,8 +16,6 @@ internal object BuiltinPresets {
 
     fun seeds(): List<Seed> = emptyList()
 
-    fun retiredNames(): List<String> = listOf(
-        "伟大长征·暗绿",
-        "伟大长征·暗绿（500T 灯光片版）",
-    )
+    /** 历史内置条目的清理名单：已全部清理完毕，现为空。 */
+    fun retiredNames(): List<String> = emptyList()
 }
