@@ -92,7 +92,7 @@ AndroidX and other build dependencies retain their own notices and licenses.
 
 ## Film recipes (presets/)
 
-[presets/speklabcam-recipes-v1.json](presets/speklabcam-recipes-v1.json) contains eight colour recipes
+[presets/speklabcam-recipes.json](presets/speklabcam-recipes.json) contains eight colour recipes
 authored by the maintainer of this fork (无限好运), each of which is a set of numeric darkroom and
 grading parameters plus a short textual note. They are original to this fork — no upstream profile,
 LUT or `.3fr` value is copied into them — and they are distributed under the same

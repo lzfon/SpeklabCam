@@ -24,7 +24,8 @@
 - 首发定为 **1.0.0（versionCode 1000）**；此前所有内部开发版本一律收回为开发记录，不再对外引用。
 - 当前对外发布：**1.0.1（versionCode 1001）**，tag `v1.0.1`，2026-11-25。收在 `1.0.0` 之后的三节改动
   （日期后背取拍摄日期、片边随机身份重做、帧号改名与批量连号开关）全部并入这一版，明细见下面三节。
-- 配方 JSON 有独立的规范版本（顶层 `version: 1`），与 App 版本解耦。
+- 配方 JSON **不编版本号**：固定一个文件名 `presets/speklabcam-recipes.json`，内容改了就直接改它，历史交给提交记录，不跟着 App 发版另开 `-v2`。
+  顶层 `kind` 是 app 判定「是不是本软件配方文件」的格式标识（`version: 1` 是内部存储格式字段，导入时不校验），都不表示配方的迭代版本。
 - 完整规则表见 [README.md](README.md#版本规则)。
 
 ## 渠道与合规边界
@@ -174,3 +175,27 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
 - **参数说明同步**：8.10 / 8.11 改名为「帧号」并补上开关与新口径；「四、导出与配方」第 1 节、第 12 节（折叠结构）同步；
   `docs/help-params.md` 一并更新（该文件此前还停留在「自动 / 手动画幅编号 / 重置编号」的旧描述）。
 - 本节随 `1.0.1`（tag `v1.0.1`）发布，即本条所在这一版的正式包。
+
+## 2026-11-25 追加二（仓库数据与口径修正 · 不升 App 版本）
+
+本轮只动 `presets/`、`docs/`、`README.md`、`NOTICE.md`、`COMPLIANCE.md` 与本文件，**未改任何 Kotlin / C++ 代码，不重打 APK，版本号保持 `1.0.1` / versionCode `1001`**。
+
+- **配方文件改名**：`presets/speklabcam-recipes-v1.json` → `presets/speklabcam-recipes.json`（`git mv`，历史仍可追）。
+  按新口径配方不编版本号，`-v1` 这类尾巴以后不再出现；仓库内所有引用（README / NOTICE / COMPLIANCE / docs/recipes.md /
+  两份历史 release notes）已同步。
+- **第 7 支 山河故人·冰河烟花 的数据修正**：查证到该场是**白天**（1999 段春节，黄河浮冰滩上点烟花），据此改为
+  `kodak_vision3_250d`、测光 `protect_highlights`、光晕 2.8 → 1.6、散射 0.8 → 0.55、提升 2EV → 1.2EV、DIR 0.90 → 1.00。
+  此前仓库里发布的始终是修正前的旧值（500T + 中央重点），与作者手机里已生效的配方不一致，本轮补齐。
+- **8 支 note 全部换成带「适用环境 / 慎用」的新版**：原 note 只写了一句影片画面描述，没提示什么场合会翻车；
+  同时补 `best_for` / `avoid` 两个数组字段（app 解析时安全忽略，供人与工具看）。
+- **`docs/recipes.md` 同步**：速查表第 7 行的材料 / 测光 / 光晕 / DIR 四列改为新值；第 7 节详解按白天取景重写
+  （含「光晕 2.8 会把天空糊住」那条避坑建议改成 1.6 口径）；顶部删掉「配方规范版本」的说法，改成「配方不编版本号」。
+- **口径冲突修正**：`COMPLIANCE.md` 发布自查清单第 2 条原文要求 `+theia-vX.Y.Z` 标注上游基座，与 `README.md`
+  「`versionName` 不带任何后缀」互相矛盾，按后者改正；自查清单新增第 8 条：改配方只动 `presets/` 与 `docs/recipes.md`，
+  不新建带版本号的配方文件，不因为改了配方就升 App 版本，且 note 里的读数必须与 `template.values` 逐条核对。
+- **校验依据**：按 app 契约（`EditPresetController.importPresets` 只认顶层 `kind = spektralab-edit-presets`，
+  逐条走 `EditPreset.fromJson`，字段越界或枚举非法即整条跳过）核对 8 支——七组必填字段齐全、`note` 均 ≤120 字、
+  材料与素材目录一致，仅 1 条有意为之的提示（英雄本色用 2393 高反差相纸）；
+  note 中的材料 / 测光 / 颗粒 / 光晕 / DIR / 打印读数与 `template.values` 实际值 8/8 一致。
+- **待办（需要网页操作）**：GitHub Release 页上的附件仍叫 `SpeklabCam-recipes-v1.json`（1.0.0 与 1.0.1 两页都挂过），
+  下次编辑 Release 时删掉旧附件、改挂与仓库同名的 `speklabcam-recipes.json`，别让两份内容不同的文件并存误导用户。

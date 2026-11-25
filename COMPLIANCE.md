@@ -35,7 +35,7 @@
 ## 我自己新增的内容
 
 - 我新增的 Kotlin / 资源 / 文档，授权方式与上游一致（GPL-3.0-or-later），不另设条款；
-- `presets/speklabcam-recipes-v1.json`（8 支配方）是我自己调的**参数文件**：数值全部原创，没有复制上游任何 .3fr / profile / LUT 数值，
+- `presets/speklabcam-recipes.json`（8 支配方）是我自己调的**参数文件**：数值全部原创，没有复制上游任何 .3fr / profile / LUT 数值，
   因此不属于"素材再分发"，随仓库按 GPL-3.0 提供，用户可自由复制、修改、分享；
   配方里引用的胶片与相纸标识（500T / 250D / 2383 / 2393 / CineStill 800T）本身仍属上游 CC BY-SA 素材，授权要求不因配方而改变；
 - 配方与 `docs/recipes.md` 里**没有剧照、海报、截图或任何影片画面**，影片名称只用作影调描述；这些名称与画面的版权归原作者影片权利人，
@@ -55,11 +55,13 @@
 ## 每次发布前的自查清单
 
 1. 源码 tag 与要上传的 APK 是**同一次构建**（`versionName` 与 `versionCode` 一致）。
-2. 版本号符合 [README.md 的版本规则](README.md#版本规则)：SemVer 三段、`+theia-vX.Y.Z` 标注上游基座、`versionCode` 只增不减；
+2. 版本号符合 [README.md 的版本规则](README.md#版本规则)：SemVer 三段、`versionName` **不带任何后缀**（上游基座写在 App 关于页、本文与 Release 正文，不塞进 `versionName`）、`versionCode` 只增不减；
    git tag 用干净短号（`v1.0.0`），不带 `+`；内部调试号（v87、v88…）不出现在 tag、Release 标题与 App 内。
 3. `README.md` / `NOTICE.md` / `CHANGELOG-custom.md` 已补充本轮改动与日期；界面或导出行为有变时，同步更新内置说明页（`docs/help-params.md` → `HelpText.kt`）。
 4. 仓库里没有 `keystore.properties`、`*.jks`、`local.properties`、`app/build`、`app/.cxx`、`app/release`、日志与 APK 文件。
 5. Release 正文写明：这是 Theia 的修改版、现作者与渠道、上游链接、GPL-3.0-or-later 与 CC BY-SA 4.0 的指向。
 6. Release 每个资产都附 **APK 的 SHA-256** 与签名证书指纹，并留一条 VirusTotal 检测链接（见 [docs/install-guidance.md](docs/install-guidance.md)）。
 7. 安装说明与隐私说明（不联网、权限清单、位置权限用途）随 README 发布；改了权限或 min/target SDK 时同步更新 `docs/install-guidance.md`。
+8. 改分配方时**只改 `presets/speklabcam-recipes.json` 和 `docs/recipes.md`**，不新建带版本号的配方文件，也不因为改了配方就升 App 版本；
+   改完逐条核对 note 里写的数字（材料 / 测光 / 颗粒 / 光晕 / DIR / 打印）与 `template.values` 实际值一致，速查表那一行同步改。
 

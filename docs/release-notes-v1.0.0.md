@@ -41,7 +41,9 @@ GitHub：<https://github.com/lzfon/SpeklabCam> ｜ 抖音（更新与安装教�
 
 ### 官方配方（不内置，按需导入）
 
-这一版随仓库发布 **8 支官方配方**，都在 `presets/speklabcam-recipes-v1.json` 里（本页附件也有一份 `SpeklabCam-recipes-v1.json`），
+这一版随仓库发布 **8 支官方配方**，当时文件名为 `presets/speklabcam-recipes-v1.json`（本页附件同名 `SpeklabCam-recipes-v1.json`）；
+现在这个文件已去掉版本尾巴，统一为 [`presets/speklabcam-recipes.json`](../presets/speklabcam-recipes.json)，
+**内容以该文件当前版本为准**（2026-11-25 修正过第 7 支「冰河烟花」的材料与光晕等数值，详见 `CHANGELOG-custom.md` 追加二）。
 逐支的影调依据、每个数值为什么这么给、适合什么题材、容易踩的坑，写在 `docs/recipes.md`（附件 `SpeklabCam-recipes-guide-zh.md`）。
 
 - 花样年华·暗红浓绿 ｜ 重庆森林·酸绿夜色 ｜ 英雄本色·钢蓝烟幕 ｜ 堕落天使·青紫霓虹

@@ -26,7 +26,7 @@
 | 内测 / 公测 | 用 SemVer 预发布后缀，正式号留空 | `1.1.0-beta.1`、`1.1.0-rc.2` |
 | 内部调试号 | v87、v88 这类编号**只在协作记录里用**，不进 tag、不进 Release、不写进 App | |
 | 上游基座 | 记在 App 关于页「上游内核 Theia v0.1.8」一行、本文与 Release 正文，不进 `versionName` | `Theia v0.1.8` |
-| 配方文件 | 有自己独立的规范版本（JSON 顶层 `version: 1`），与 App 版本解耦：App 升级不影响老配方 | |
+| 配方文件 | **不编版本号**：固定一个文件名，内容改了就直接改它，历史交给提交记录，不跟着 App 发版另开 `-v2` | `presets/speklabcam-recipes.json` |
 
 进位规则：
 
@@ -57,7 +57,7 @@
 
 安装包**不带任何配方**，「我的配方」列表初始为空。官方配方以文件形式发布在这里：
 
-- 配方文件：[presets/speklabcam-recipes-v1.json](presets/speklabcam-recipes-v1.json) —— 8 支（港片 6 支 + 《山河故人》2 支）
+- 配方文件：[presets/speklabcam-recipes.json](presets/speklabcam-recipes.json) —— 8 支（港片 6 支 + 《山河故人》2 支）
 - 逐支详细说明：[docs/recipes.md](docs/recipes.md) —— 影调依据、适用题材与光线、每格参数为什么这么给、容易翻车在哪、可微调建议
 
 导入方法：把这个 JSON 存到手机上 → 打开 App → **首页 → 智能配方 →「增加我的配方」→ 弹窗底部「导入配方」** → 选中该文件

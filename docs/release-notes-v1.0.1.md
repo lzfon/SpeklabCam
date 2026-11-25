@@ -78,8 +78,12 @@ EXIF 里没有拍摄时间时退回相册记录的 `DATE_TAKEN`，两者都读�
 
 ### 官方配方（不内置，按需导入）
 
-配方文件与 1.0.0 完全相同（规范版本 `version: 1`，两版通用），仍在本页附件 `SpeklabCam-recipes-v1.json`，
-逐支的影调依据与调参说明在附件 `SpeklabCam-recipes-guide-zh.md`（仓库里是 `docs/recipes.md`）。
+配方文件不跟着 App 编版本号（`version: 1` 只是文件格式标识），本页当时挂的附件名为 `SpeklabCam-recipes-v1.json`，
+仓库里现为固定名 [`presets/speklabcam-recipes.json`](../presets/speklabcam-recipes.json)；
+逐支的影调依据与调参说明在附件 `SpeklabCam-recipes-guide-zh.md`（仓库里是 [docs/recipes.md](recipes.md)）。
+
+> 2026-11-25 数据修正：第 7 支「山河故人·冰河烟花」按取景事实（白天）改为 250D + 保护高光，光晕 2.8 → 1.6、散射 0.8 → 0.55、提升 2EV → 1.2EV、DIR 0.90 → 1.00；
+> 8 支的 `note` 换成带「适用环境 / 慎用」的新版。请以仓库里的 `presets/speklabcam-recipes.json` 为准重新导入一次。
 
 - 花样年华·暗红浓绿 ｜ 重庆森林·酸绿夜色 ｜ 英雄本色·钢蓝烟幕 ｜ 堕落天使·青紫霓虹
 - 阿郎的故事·褪色尘土 ｜ 天若有情·冷暖夜雨 ｜ 山河故人·冰河烟花 ｜ 山河故人·1999县城冬日
