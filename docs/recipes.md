@@ -1,7 +1,7 @@
 # 官方配方包 · 8 支（港片 6 + 山河故人 2）
 
 文件：[`presets/speklabcam-recipes-v1.json`](../presets/speklabcam-recipes-v1.json)
-适用版本：SpekLab相机 1.0.0（上游内核 Theia v0.1.8）
+适用版本：SpekLab相机 1.0.0 及以上（当前发布 **1.0.1**，上游内核 Theia v0.1.8；配方规范 `version: 1`，两版通用）
 配方规范版本：JSON 顶层 `version: 1`（与 App 版本解耦，App 升级不影响已导入的配方）
 
 作者：无限好运。这 8 支是我自己拍片、对照片反复调出来的参数组合，全部按本仓库的 GPL-3.0-or-later 授权公开，
