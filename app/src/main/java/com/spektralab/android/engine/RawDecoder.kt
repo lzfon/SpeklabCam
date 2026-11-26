@@ -54,6 +54,7 @@ object RawDecoder {
     private val RAW_EXTENSIONS = setOf(
         "cr2", "cr3", "nef", "nrw", "arw", "dng", "raf", "orf", "rw2", "pef",
         "srw", "rwl", "3fr", "erf", "mef", "mos", "raw", "x3f", "kdc", "dcr", "sr2",
+        "tif", "tiff",
     )
 
     /** 按文件名（小写）判断是否是受支持的 RAW。 */
@@ -64,15 +65,39 @@ object RawDecoder {
         return displayName.substring(dot + 1).lowercase() in RAW_EXTENSIONS
     }
 
-    /** Also recognize DNG data mislabeled with .tif/.tiff by inspecting only its TIFF IFD header. */
+    /**
+     * 名字只是快捷方式，不是判据。系统相册 / 文件管理给的 DISPLAY_NAME 经常不可靠：
+     * vivo、ColorOS 的选择器会返回行号 "8420"，某些云盘会去掉扩展名，把 DNG 改名成 .jpg 也能导入。
+     * 只信名字的话，RAW 会被当成普通位图，平台解码器只吐 DNG 的内嵌预览，导出就成了 1066×744 小图。
+     */
+    /** 名字只当快捷方式，文件头才是判据：DNG 改名成 .jpg、行号冒充名字，都先扫头再说。 */
     fun isRaw(context: Context, uri: Uri, displayName: String?): Boolean {
-        if (isRaw(displayName)) return true
-        val extension = displayName?.substringAfterLast('.', "")?.lowercase()
-            ?: uri.lastPathSegment?.substringAfterLast('.', "")?.lowercase()
-        if (extension !in setOf("tif", "tiff")) return false
+        val headerRaw = runCatching { looksLikeRawTiff(context, uri) }.getOrDefault(false)
+        if (headerRaw) {
+            Log.i("SpkRaw", "container sniff = RAW (displayName=$displayName, segment=${uri.lastPathSegment})")
+            return true
+        }
+        val extension = extensionOf(displayName) ?: extensionOf(uri.lastPathSegment)
+        return extension != null && extension in RAW_EXTENSIONS
+    }
+
+    /** 取可确信的小写扩展名；纯数字、无点、过长或含符号一律算“名字不可用”。 */
+    private fun extensionOf(name: String?): String? {
+        if (name == null) return null
+        val dot = name.lastIndexOf('.')
+        if (dot <= 0 || dot == name.lastIndex) return null
+        val tail = name.substring(dot + 1).lowercase()
+        return tail.takeIf { it.length in 2..5 && it.all { ch -> ch.isLetterOrDigit() } }
+    }
+
+    /** TIFF 头 + DNGVersion(50706) 或 Classic TIFF 的 .tif/.tiff 容器判断；只读前 64KiB。 */
+    internal fun looksLikeRawTiff(context: Context, uri: Uri): Boolean =
+        readHeader { context.contentResolver.openInputStream(uri) }
+
+    private fun readHeader(open: () -> java.io.InputStream?): Boolean {
         return try {
             val header = ByteArray(64 * 1024)
-            val count = context.contentResolver.openInputStream(uri)?.use { input ->
+            val count = open()?.use { input ->
                 var total = 0
                 while (total < header.size) {
                     val read = input.read(header, total, header.size - total)

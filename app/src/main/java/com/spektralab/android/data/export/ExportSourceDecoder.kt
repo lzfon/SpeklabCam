@@ -16,7 +16,9 @@ internal object ExportSourceDecoder {
              params: EditorParams, options: ExportOptions, check: () -> Unit) {
         engine.closeSession()
         val size = options.renderResolution
-        if (raw) {
+        // raw 标记可能来自名字撒谎（改名 .JPG、行号当名字）或旧任务凭据；容器是 DNG 就必须走 RAW，
+        // 位图路径只会拿到内嵌预览，导出必然变小图。
+        if (raw || RawDecoder.looksLikeRawTiff(context, source)) {
             val cancellation = RawDecodeCancellation { check(); false }
             val info = if (params.cameraWbCustom && (params.cameraWbTemperatureAsShot || params.cameraWbTintAsShot))
                 RawDecoder.readCameraInfo(context, source, cancellation) else null
@@ -46,6 +48,7 @@ internal object ExportSourceDecoder {
     }
 
     fun bitmap(context: Context, uri: Uri, size: Int): Bitmap {
+        refuseRawContainer(context, uri)
         val limit = if (size == 0) Int.MAX_VALUE else size
         if (Build.VERSION.SDK_INT >= 28) return ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
@@ -95,5 +98,29 @@ internal object ExportSourceDecoder {
             image = resized
         }
         return image
+    }
+
+    /**
+     * 兜底：位图解码路径绝不该收到 RAW。曾经 Lightroom 转档的 DNG 因为 DISPLAY_NAME 是行号而被判成
+     * 位图，平台解码器只肯给内嵌预览（1024×683），加上片边导出就成了 1066×744 的小图。
+     * 名字判据靠不住时宁可明确报错，也不悄悄交出一张预览尺寸的“成品”。
+     * 只对 TIFF 魔数继续查 DNGVersion，JPEG/HEIC/PNG 只读 8 字节即放过，几乎零开销。
+     */
+    private fun refuseRawContainer(context: Context, uri: Uri) {
+        val tiffMagic = try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val head = ByteArray(8)
+                var total = 0
+                while (total < head.size) {
+                    val read = input.read(head, total, head.size - total)
+                    if (read <= 0) break
+                    total += read
+                }
+                total == head.size && ((head[0] == 'I'.code.toByte() && head[1] == 'I'.code.toByte()) ||
+                    (head[0] == 'M'.code.toByte() && head[1] == 'M'.code.toByte()))
+            } ?: false
+        } catch (_: Exception) { false }
+        if (tiffMagic && RawDecoder.looksLikeRawTiff(context, uri))
+            error("这是 TIFF/DNG 原始文件，却走到了位图解码路径；位图解码只能读到它的内嵌预览，已停止导出以免生成小图。")
     }
 }

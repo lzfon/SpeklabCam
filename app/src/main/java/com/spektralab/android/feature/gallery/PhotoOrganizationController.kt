@@ -65,6 +65,14 @@ internal class PhotoOrganizationController(private val context: Context, private
         }
     }
 
+    /**
+     * 列表分页加载时一次性回填整页的相册归属（含"没有任何相册"的空集）。
+     * 少了这一步，已经分过组的照片在未点开相册菜单前只会显示"选择相册"。
+     */
+    fun primeInlineMembership(memberships: Map<String, Set<String>>) {
+        if (memberships.isNotEmpty()) inlineMembership = inlineMembership + memberships
+    }
+
     fun setRatingInline(photo: SavedPhoto, value: Int) =
         inline(photo) { it.copy(rating = value.coerceIn(0, 5)) }
 

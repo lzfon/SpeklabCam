@@ -31,6 +31,9 @@ internal class SavedPhotosController(private val context: Context, private val s
         private set
     var totalCount by mutableStateOf(0L)
         private set
+    /** 「未分组」目录的张数，相册下拉菜单里显示。 */
+    var ungroupedCount by mutableStateOf(0L)
+        private set
     fun applyFilter(value: PhotoLibraryFilter) {
         if (selection.active || selection.pending || sourceJob?.isActive == true || opening || organization.pending || filter == value) return
         filter = value
@@ -89,8 +92,10 @@ internal class SavedPhotosController(private val context: Context, private val s
                     return@launch
                 }
                 organization.albums = page.albums
+                organization.primeInlineMembership(page.memberships)
                 matchingCount = page.matchingCount
                 totalCount = page.totalCount
+                ungroupedCount = page.ungroupedCount
                 photos = if (append) (photos + page.photos).distinctBy { it.assetId } else page.photos
                 savedSession = session.getOrNull()
                 sessionError = if (session.isFailure) context.getString(R.string.photos_session_load_error) else null

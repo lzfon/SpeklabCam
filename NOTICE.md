@@ -21,7 +21,7 @@ from `com.spektralab.android` (upstream) to `com.spektralabcam.android`. Java/Ko
 names, resource ids and upstream copyright headers are left untouched.
 
 Versioning: public releases use SemVer 2.0 in `versionName` with no suffix at all (`1.0.0`, `1.1.0`,
-`1.0.1`). The upstream base is recorded on a separate line in the in-app About screen, in the Release
+`1.0.1`, `1.0.2`). The upstream base is recorded on a separate line in the in-app About screen, in the Release
 notes and in this file — it is deliberately **not** appended to `versionName`, because Android settings
 pages show that string verbatim. `versionCode` increases monotonically starting at 1000. Internal
 debug counters (v87, v88 …) never appear in tags, release titles or the app.

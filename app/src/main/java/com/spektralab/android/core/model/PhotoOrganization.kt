@@ -27,9 +27,14 @@ internal data class PhotoLibraryFilter(
     val minimumRating: Int = 0,
     val label: PhotoLabel? = null,
     val unratedOnly: Boolean = false,
+    /** 「未分组」：只看没有任何相册归属的照片，与指定相册互斥。 */
+    val ungroupedOnly: Boolean = false,
 ) {
-    init { require(minimumRating in 0..5 && !(unratedOnly && minimumRating > 0)) }
-    val active: Boolean get() = albumId != null || minimumRating != 0 || label != null || unratedOnly
+    init {
+        require(minimumRating in 0..5 && !(unratedOnly && minimumRating > 0))
+        require(!ungroupedOnly || albumId == null) { "ALBUM_FILTER_CONFLICT" }
+    }
+    val active: Boolean get() = albumId != null || minimumRating != 0 || label != null || unratedOnly || ungroupedOnly
 }
 
 internal object AlbumNames {

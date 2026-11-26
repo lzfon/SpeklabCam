@@ -8,7 +8,7 @@
 
 - 应用显示名：**SpekLab相机**
 - 包名（applicationId）：`com.spektralabcam.android`（与上游 Theia 的 `com.spektralab.android` 区分开，**两个应用可以在同一台手机上并存安装**）
-- 版本口径：见下面[版本规则](#版本规则)。当前发布 **1.0.1（versionCode 1001）**，基于上游引擎 **Theia v0.1.8**
+- 版本口径：见下面[版本规则](#版本规则)。当前发布 **1.0.2（versionCode 1002）**，基于上游引擎 **Theia v0.1.8**
 - 源码仓库：https://github.com/lzfon/SpeklabCam ｜ 下载：本仓库 **Releases** 页
 
 ---

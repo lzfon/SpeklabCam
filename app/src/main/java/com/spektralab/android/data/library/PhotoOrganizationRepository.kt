@@ -112,6 +112,8 @@ internal class PhotoOrganizationRepository(private val db: SQLiteDatabase) {
             filter.albumId?.let {
                 clauses += "EXISTS(SELECT 1 FROM album_members member WHERE member.asset_id=a.asset_id AND member.album_id=?)"; args += it
             }
+            // 「未分组」= 没有任何相册归属；隐藏的照片由上层 visibleSelection 再统一排除。
+            if (filter.ungroupedOnly) clauses += "NOT EXISTS(SELECT 1 FROM album_members member WHERE member.asset_id=a.asset_id)"
             if (filter.minimumRating > 0) { clauses += "COALESCE(m.rating,0)>=CAST(? AS INTEGER)"; args += filter.minimumRating.toString() }
             if (filter.unratedOnly) clauses += "COALESCE(m.rating,0)=0"
             filter.label?.let { clauses += "COALESCE(m.label,'none')=?"; args += it.id }

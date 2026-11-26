@@ -19,7 +19,7 @@
 
 1. **没有网络权限**，也没有广告 SDK 与统计 SDK：
    ```
-   aapt2 dump badging SpeklabCam-1.0.1-arm64-release-signed.apk | findstr uses-permission
+   aapt2 dump badging speklabcam-1.0.2-arm64-release-signed.apk | findstr uses-permission
    ```
    只会看到 `READ_MEDIA_IMAGES`、`READ_EXTERNAL_STORAGE(≤32)`、`ACCESS_MEDIA_LOCATION`、
    `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_DATA_SYNC` / `FOREGROUND_SERVICE_MEDIA_PROCESSING`、`WAKE_LOCK`。
@@ -29,7 +29,7 @@
 2. **源码可复现**：仓库 tag 与该 APK 是同一次构建，按 README「从源码构建」自己编译即可得到等价产物。
 3. **签名固定**：所有正式发布版用同一把密钥。
    ```
-   apksigner verify --print-certs SpeklabCam-1.0.1-arm64-release-signed.apk
+   apksigner verify --print-certs speklabcam-1.0.2-arm64-release-signed.apk
    ```
    证书 SHA-256 应为
    `a11fc44c9763819df767060ad9a415da537fb1dff9f3bbfa3beeb393713cc34b`
@@ -67,7 +67,7 @@
 ## 五、被报毒 / 被拦时怎么申诉
 
 1. **先定位是谁报的**：把 APK 上传 VirusTotal，记下标红的引擎名与报告链接。VirusTotal 只聚合结果，**不能替厂商删除检测**，必须逐家找引擎。
-2. **逐家提交误报**（附 APK、报毒截图、包名 `com.spektralabcam.android`、版本 `1.0.1 / versionCode 1001`、SHA-256、源码地址，以及"无网络权限、无广告 SDK、离线处理"三条事实）：
+2. **逐家提交误报**（附 APK、报毒截图、包名 `com.spektralabcam.android`、版本 `1.0.2 / versionCode 1002`、SHA-256、源码地址，以及"无网络权限、无广告 SDK、离线处理"三条事实）：
 
    | 引擎 / 安全中心 | 渠道 |
    | --- | --- |

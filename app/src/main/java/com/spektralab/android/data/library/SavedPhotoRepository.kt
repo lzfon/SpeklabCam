@@ -20,7 +20,11 @@ internal data class SavedPhoto(val assetId: String, val variantId: String, val u
     val rating: Int = 0, val label: PhotoLabel = PhotoLabel.NONE)
 
 internal data class PhotoLibraryPage(val photos: List<SavedPhoto>, val albums: List<com.spektralab.android.core.model.PhotoAlbum>,
-    val matchingCount: Long, val totalCount: Long)
+    val matchingCount: Long, val totalCount: Long,
+    /** 「未分组」目录的照片数，供下拉菜单显示计数。 */
+    val ungroupedCount: Long = 0,
+    /** 这一页每张照片的相册归属（无归属＝空集），列表里相册行要一开始就显示对名字。 */
+    val memberships: Map<String, Set<String>> = emptyMap())
 
 /** Production default-variant store. All calls are serialized by the EditStore facade. */
 internal class SavedPhotoRepository private constructor(private val directory: File, private val db: SQLiteDatabase) : Closeable {
@@ -113,7 +117,24 @@ internal class SavedPhotoRepository private constructor(private val directory: F
     fun page(filter: PhotoLibraryFilter, offset: Int) = transaction {
         val albums = db.rawQuery("SELECT a.album_id,a.name,COUNT(member.asset_id) FROM albums a LEFT JOIN album_members member ON member.album_id=a.album_id AND NOT EXISTS(SELECT 1 FROM hidden_photos h WHERE h.asset_id=member.asset_id) GROUP BY a.album_id ORDER BY a.created_at,a.album_id", null)
             .use { cursor -> buildList { while (cursor.moveToNext()) add(com.spektralab.android.core.model.PhotoAlbum(cursor.getString(0), cursor.getString(1), cursor.getLong(2))) } }
-        PhotoLibraryPage(list(60, offset, filter), albums, matchingCount(filter), count())
+        val photos = list(60, offset, filter)
+        PhotoLibraryPage(photos, albums, matchingCount(filter), count(), ungroupedCount(), memberships(photos.map(SavedPhoto::assetId)))
+    }
+
+    private fun ungroupedCount(): Long = db.rawQuery(
+        "SELECT COUNT(*) FROM assets a JOIN edits e USING(asset_id) WHERE NOT EXISTS(SELECT 1 FROM album_members member WHERE member.asset_id=a.asset_id)" +
+            " AND NOT EXISTS(SELECT 1 FROM hidden_photos h WHERE h.asset_id=a.asset_id)", null,
+    ).use { if (it.moveToFirst()) it.getLong(0) else 0L }
+
+    /** 一次查询取回整页的相册归属；没有归属的资产也给出空集，避免残留的旧名字赖在缓存里。 */
+    private fun memberships(assetIds: List<String>): Map<String, Set<String>> {
+        val result = assetIds.associateWith { emptySet<String>() }.toMutableMap()
+        if (assetIds.isEmpty()) return result
+        val marks = assetIds.joinToString(",") { "?" }
+        db.rawQuery("SELECT asset_id,album_id FROM album_members WHERE asset_id IN ($marks)", assetIds.toTypedArray())
+            .use { cursor -> while (cursor.moveToNext()) result[cursor.getString(0)] =
+                (result[cursor.getString(0)] ?: emptySet()) + cursor.getString(1) }
+        return result
     }
 
     private fun visibleSelection(filter: PhotoLibraryFilter): Pair<String, Array<String>> {

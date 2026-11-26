@@ -74,21 +74,35 @@ internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolea
         Row(Modifier.widthIn(max = 520.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
+                val ungrouped = controller.filter.ungroupedOnly
                 OutlinedButton(onClick = { albumMenu = true }, enabled = enabled, shape = TheiaShapes.control,
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     modifier = Modifier.heightIn(min = 48.dp).fillMaxWidth()) {
                     Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(activeAlbum?.name ?: stringResource(R.string.library_all_photos), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text((if (ungrouped) stringResource(R.string.library_ungrouped) else activeAlbum?.name)
+                        ?: stringResource(R.string.library_all_photos), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Icon(Icons.Rounded.ArrowDropDown, null, Modifier.size(18.dp))
                 }
                 DropdownMenu(expanded = albumMenu, onDismissRequest = { albumMenu = false }, modifier = Modifier.heightIn(max = 360.dp)) {
+                    // 未分组＝没有任何相册归属的照片，和指定相册互斥。
                     DropdownMenuItem(text = { Text(stringResource(R.string.library_all_photos)) }, onClick = {
-                        albumMenu = false; controller.applyFilter(controller.filter.copy(albumId = null))
+                        albumMenu = false; controller.applyFilter(controller.filter.copy(albumId = null, ungroupedOnly = false))
+                    }, leadingIcon = {
+                        Icon(if (!ungrouped && activeAlbum == null) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                            null, Modifier.size(18.dp))
                     })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.library_ungrouped)) }, onClick = {
+                        albumMenu = false; controller.applyFilter(controller.filter.copy(albumId = null, ungroupedOnly = true))
+                    }, leadingIcon = {
+                        Icon(if (ungrouped) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null, Modifier.size(18.dp))
+                    }, trailingIcon = { Text(controller.ungroupedCount.toString(), style = MaterialTheme.typography.labelSmall) })
                     controller.organization.albums.forEach { album ->
                         DropdownMenuItem(text = { Text(album.name, maxLines = 2, overflow = TextOverflow.Ellipsis) }, onClick = {
-                            albumMenu = false; controller.applyFilter(controller.filter.copy(albumId = album.id))
+                            albumMenu = false; controller.applyFilter(controller.filter.copy(albumId = album.id, ungroupedOnly = false))
+                        }, leadingIcon = {
+                            Icon(if (!ungrouped && activeAlbum?.id == album.id) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                                null, Modifier.size(18.dp))
                         }, trailingIcon = { Text(album.count.toString(), style = MaterialTheme.typography.labelSmall) })
                     }
                 }

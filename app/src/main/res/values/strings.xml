@@ -190,6 +190,7 @@
     <string name="library_all_labels">全部色标</string>
     <string name="library_albums">相册</string>
     <string name="library_all_photos">全部照片</string>
+    <string name="library_ungrouped">未分组</string>
     <string name="library_album_manage">管理相册</string>
     <string name="library_album_create">新建相册</string>
     <string name="library_album_empty">还没有相册</string>
