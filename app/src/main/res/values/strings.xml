@@ -352,7 +352,6 @@
     <string name="photos_add_album">加入相册</string>
     <string name="photos_add_viewing">观片台</string>
     <string name="photos_put_session">选中 %1$d 张放入工作台</string>
-    <string name="photos_put">放入</string>
     <string name="photos_double_tap_hint">星级、色标双击恢复</string>
     <string name="photos_add_project">观片台项目</string>
     <string name="photos_choose_project">选择观片台项目</string>

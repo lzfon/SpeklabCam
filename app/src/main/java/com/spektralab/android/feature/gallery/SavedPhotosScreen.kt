@@ -6,11 +6,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -59,6 +59,10 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
     val context = LocalContext.current
     val selection = controller.selection
     val canAct = enabled && !controller.loading && !controller.organization.pending && !selection.pending
+    // 列表滚离顶部后，多选这行只留「选中 N 张放入工作台」几个字吸在顶上。
+    val listState = rememberLazyListState()
+    // 用「第一项已经不是这块头」判定：如果再加 offset>0，头缩矮后 offset 归零会让它反复展开、闪烁。
+    val scrolled by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     fun back() { if (selection.active) selection.clear() else onBack() }
     BackHandler(enabled = selection.active || selection.pending) { if (!selection.pending) selection.clear() }
     var checkTarget by remember { mutableStateOf<SavedPhoto?>(null) }
@@ -106,11 +110,12 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
     }) { insets ->
         Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.TopCenter) {
             LazyColumn(Modifier.widthIn(max = 860.dp).fillMaxSize().navigationBarsPadding(),
+                state = listState,
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                item {
-                    // 多选态不占这行，恢复入口只在浏览态出现。
-                    LibraryFilterBar(controller, canAct && !selection.active, onRestore, showRestore = !selection.active)
+                // 浏览态：筛选条 + 计数行照常跟着列表走。多选态改由下面那条吸顶行渲染。
+                if (!selection.active) item {
+                    LibraryFilterBar(controller, canAct, onRestore)
                 }
                 // 只在浏览态提示：多选时列表项里不出现星级/色标控件。
                 if (!selection.active) item {
@@ -118,27 +123,21 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                // 多选时，同一位置换成「把选中的放入工作台」：只放勾选的那几张，不是把整列都放进去。
-                // 整条都能点，手机上比角落里的小按钮好按。
-                // 滚到顶就吸附在那里，翻到列表多深都还能点「放入」。
+                // 多选时计数行右侧换成「选中 N 张放入工作台」，位置就是恢复入口那一格。
+                // 往下翻，整块压成 compact，只把这几个字吸在列表顶部。
                 if (selection.active) stickyHeader {
                     val canPut = canAct && selection.selected.isNotEmpty()
-                    // 吸顶后会盖在列表上，这一层自己铺底色，不能透。
+                    // 吸顶后盖在列表上，这一层自己铺底色，不能透。
                     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 20.dp, vertical = 4.dp)) {
-                        Row(Modifier.fillMaxWidth().height(40.dp).clip(TheiaShapes.panel)
-                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                            .clickable(enabled = canPut) {
+                        LibraryFilterBar(controller, canAct && !selection.active, onRestore,
+                            showRestore = false,
+                            putCount = selection.selected.size, putEnabled = canPut,
+                            onPut = {
                                 onAddAllToWorkbench(selection.selected.values.map { Uri.parse(it.uri) })
                                 selection.clear()
-                            }.padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(stringResource(R.string.photos_put_session, selection.selected.size), Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodySmall, maxLines = 1,
-                                overflow = TextOverflow.Ellipsis)
-                            Text(stringResource(R.string.photos_put), style = MaterialTheme.typography.bodySmall,
-                                color = if (canPut) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                            },
+                            compact = scrolled)
                     }
                 }
                 if (controller.loading) item {

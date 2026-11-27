@@ -69,11 +69,15 @@ internal fun PhotoMarks(rating: Int, label: PhotoLabel) {    if (rating == 0 && 
 @Composable
 internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolean,
                               onRestore: (com.spektralab.android.core.model.SavedEditSession) -> Unit = {},
-                              showRestore: Boolean = true) {
+                              showRestore: Boolean = true,
+                              putCount: Int? = null, putEnabled: Boolean = true, onPut: () -> Unit = {},
+                              compact: Boolean = false) {
     var albumMenu by remember { mutableStateOf(false) }
     var filters by remember { mutableStateOf(false) }
     val activeAlbum = controller.organization.albums.firstOrNull { it.id == controller.filter.albumId }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // compact（滚动到顶后）只留右侧那行字，筛选控件、计数都不占位置。
+        if (!compact) {
         Row(Modifier.widthIn(max = 520.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
@@ -121,20 +125,30 @@ internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolea
                 Icon(Icons.Rounded.FolderCopy, contentDescription = stringResource(R.string.library_album_manage))
             }
         }
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // 滚动到顶后计数让位，但保留占位，让右边那行字仍贴右边缘。
+            if (compact) Spacer(Modifier.weight(1f)) else
             Text(stringResource(R.string.library_result_count, controller.matchingCount, controller.totalCount),
                 Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // 多选态：原来单独那条「选中 N 张…放入」并进这一行，位置就是恢复入口的位置。
+            if (putCount != null) TextButton(onClick = onPut, enabled = putEnabled,
+                contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.height(40.dp)) {
+                Text(stringResource(R.string.photos_put_session, putCount), style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    color = if (putEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             // 上次的工作台不再占一整块卡片，恢复入口收进这一行。
             // 这一行放不下三段长文字：恢复入口折成两行小字、清除筛选收成一个叉。
-            if (showRestore) controller.savedSession?.takeIf { it.photos.isNotEmpty() }?.let { session ->
+            if (!compact && showRestore) controller.savedSession?.takeIf { it.photos.isNotEmpty() }?.let { session ->
                 TextButton(onClick = { controller.restoreSession(onRestore) }, enabled = enabled && !controller.loading,
                     contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.height(40.dp)) {
                     Text(stringResource(R.string.photos_session_resume_count, session.photos.size),
                         style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 }
             }
-            if (controller.filter.active) TextButton(onClick = { controller.applyFilter(PhotoLibraryFilter()) },
+            if (!compact && controller.filter.active) TextButton(onClick = { controller.applyFilter(PhotoLibraryFilter()) },
                 enabled = enabled, contentPadding = PaddingValues(horizontal = 8.dp),
                 modifier = Modifier.height(40.dp)) {
                 Text(stringResource(R.string.library_filter_clear), style = MaterialTheme.typography.bodySmall, maxLines = 1)
