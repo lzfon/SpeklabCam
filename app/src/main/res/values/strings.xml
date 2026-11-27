@@ -226,7 +226,6 @@
     <string name="photos_source_baseline_missing">这份记录还没有原片校验，无法确认另一个位置的文件。请先恢复原位置的访问权限；原有调整仍保留。</string>
     <string name="photos_source_conflict">所选文件已经属于图库中的另一份记录，不能合并或覆盖它。</string>
     <string name="photos_source_stale">这份记录刚刚发生了变化，请刷新图库后重试。已有调整仍保留。</string>
-    <string name="photos_session_resume">恢复工作台</string>
     <string name="photos_session_save_error">工作台暂时无法保存，上次记录已保留。请稍后更改照片选择后重试。</string>
     <string name="photos_session_capacity_error">工作台的照片数量或地址超过了保存容量。当前编辑仍可继续，上次工作台记录已保留。</string>
     <string name="photos_session_load_error">上次工作台暂时无法读取，记录已保留。请刷新后重试。</string>
@@ -389,4 +388,5 @@
     <string name="date_imprint_date_found">照片包含拍摄日期，可手动修改。</string>
     <string name="date_imprint_data_missing">照片未记录拍摄参数，请手动输入。</string>
     <string name="date_imprint_data_found">已读取可用的焦距、光圈、快门和 ISO，缺失项可补充。</string>
+    <string name="photos_session_resume_count">恢复上次工作台 %1$d 张照片</string>
 </resources>

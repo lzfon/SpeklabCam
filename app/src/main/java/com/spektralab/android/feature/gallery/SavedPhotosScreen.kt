@@ -108,7 +108,8 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
                 item {
-                    LibraryFilterBar(controller, canAct && !selection.active, onRestore)
+                    // 多选态不占这行，恢复入口只在浏览态出现。
+                    LibraryFilterBar(controller, canAct && !selection.active, onRestore, showRestore = !selection.active)
                 }
                 // 只在浏览态提示：多选时列表项里不出现星级/色标控件。
                 if (!selection.active) item {
