@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.exifinterface.media.ExifInterface
 import com.spektralab.android.R
+import com.spektralab.android.data.cache.EffectThumbnailStore
 import com.spektralab.android.data.library.SavedPhoto
 import com.spektralab.android.data.local.EditStore
 import com.spektralab.android.data.library.SourceProbe
@@ -69,6 +70,8 @@ internal class SavedPhotosController(private val context: Context, private val s
     private var opening = false
     private val thumbJobs = mutableMapOf<String, Job>()
     private val visibleThumbnails = mutableSetOf<String>()
+    /** 每张已缓存缩略图对应的参数修订号：效果图写盘后修订号会变，据此把看旧的换掉。 */
+    private val thumbnailRevisions = mutableMapOf<String, Long>()
 
     fun refresh() = fetch(false)
     fun more() { if (hasMore && !loading) fetch(true) }
@@ -97,6 +100,7 @@ internal class SavedPhotosController(private val context: Context, private val s
                 totalCount = page.totalCount
                 ungroupedCount = page.ungroupedCount
                 photos = if (append) (photos + page.photos).distinctBy { it.assetId } else page.photos
+                dropStaleThumbnails()
                 savedSession = session.getOrNull()
                 sessionError = if (session.isFailure) context.getString(R.string.photos_session_load_error) else null
                 hasMore = photos.size < matchingCount
@@ -114,10 +118,15 @@ internal class SavedPhotosController(private val context: Context, private val s
         if (thumbnails.containsKey(photo.assetId) || thumbJobs[photo.assetId]?.isActive == true) return
         thumbJobs[photo.assetId] = scope.launch {
             try {
-                val bitmap = withContext(Dispatchers.IO) { reads.withPermit { decode(Uri.parse(photo.uri)) } }
+                val bitmap = withContext(Dispatchers.IO) { reads.withPermit {
+                    // 先取编辑页落盘的效果图；列表里的修订号可能比库里旧，未命中就按库里最新那条再试一次，
+                    // 这样刚从编辑页返回、列表还没重拉的行也能立刻显示成品画面。都没有才解原图。
+                    effectThumbnail(photo) ?: decode(Uri.parse(photo.uri))
+                } }
                 if (bitmap != null) {
                     val next = LinkedHashMap(thumbnails)
                     next[photo.assetId] = bitmap
+                    thumbnailRevisions[photo.assetId] = photo.revision
                     // Detached bitmaps may still belong to a Compose draw; let GC own their release.
                     thumbnails = trimThumbnails(next)
                 }
@@ -128,14 +137,30 @@ internal class SavedPhotosController(private val context: Context, private val s
     }
     fun cancelThumbnail(id: String) {
         visibleThumbnails -= id
+        thumbnailRevisions -= id
         thumbJobs.remove(id)?.cancel()
         thumbnails = trimThumbnails(LinkedHashMap(thumbnails))
     }
 
+    /** 列表刷新后，把参数已经改过、效果图也已换版的行从内存里摘掉，下一帧重画时自然读到新的成品缩略图。 */
+    private fun dropStaleThumbnails() {
+        if (thumbnailRevisions.isEmpty()) return
+        val stale = thumbnails.keys.filter { id ->
+            val row = photos.firstOrNull { it.assetId == id } ?: return@filter true
+            thumbnailRevisions[id] != row.revision
+        }
+        if (stale.isEmpty()) return
+        stale.forEach {
+            thumbnails = thumbnails - it
+            thumbnailRevisions -= it
+            thumbJobs.remove(it)?.cancel()
+        }
+    }
+
     private fun trimThumbnails(next: LinkedHashMap<String, Bitmap>): Map<String, Bitmap> {
-        // A tablet can compose more than twelve rows. Never evict an on-screen bitmap:
-        // its row's effect would otherwise keep showing a placeholder until recomposed.
-        while (next.size > 12) {
+        // 效果图缩略图比原来的 384 长边大一档，内存里同时留 16 张：平板一屏可能Compose更多行，
+        // 且正在显示的那张绝不能被淘汰——否则它的效果要等重新组合才恢复。
+        while (next.size > 16) {
             val retired = next.keys.firstOrNull { it !in visibleThumbnails } ?: break
             next.remove(retired)
         }
@@ -302,6 +327,24 @@ internal class SavedPhotosController(private val context: Context, private val s
             "EDIT_TARGET_CHANGED", "SOURCE_RELINKED" -> R.string.photos_source_stale
             else -> R.string.photos_source_error
         })
+    }
+
+    /** 这张照片有没有渲染过并落过盘的效果图：先按行上的修订号取，取不到再按库里最新的取。 */
+    private suspend fun effectThumbnail(photo: SavedPhoto): Bitmap? {
+        EffectThumbnailStore.get(context, photo.assetId, photo.revision)?.let { return it }
+        val latest = runCatching { EditStore.savedPhoto(context, photo.assetId) }.getOrNull() ?: return null
+        if (latest.revision == photo.revision) return null
+        return EffectThumbnailStore.get(context, photo.assetId, latest.revision)
+    }
+
+    /** 编辑页刚落盘一张效果图：把内存里这张的旧画面摘掉，正在显示的行下一帧重新取。 */
+    fun invalidateThumbnail(assetId: String) {
+        val cached = thumbnails.containsKey(assetId)
+        if (!cached && thumbJobs[assetId]?.isActive != true) return
+        thumbnails = thumbnails - assetId
+        thumbnailRevisions -= assetId
+        thumbJobs.remove(assetId)?.cancel()
+        if (assetId in visibleThumbnails) photos.firstOrNull { it.assetId == assetId }?.let(::thumbnail)
     }
 
     private fun decode(uri: Uri): Bitmap? {

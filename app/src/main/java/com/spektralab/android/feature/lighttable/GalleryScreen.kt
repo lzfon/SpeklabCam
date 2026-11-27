@@ -66,20 +66,23 @@ internal fun GalleryScreen(
         val developed = vm.developedPreviews[uri]
         val current = if (uri == vm.currentUri) vm.rendered ?: vm.sourceBitmap else null
         val thumb = developed ?: independent[key] ?: vm.thumbnails[uri]
+        // 缩略图来自编辑页落盘的效果图：这张已经是调过参数的成品，放大时也沿用效果，
+        // 不再去解一张没调过参数的原图顶上，免得缩小看着有效果、一放大又退回原图。
+        val effect = developed == null && current == null && vm.isEffectThumbnail(uri)
         ViewingPhoto(
             key = key,
             thumbnail = thumb ?: current ?: vm.galleryPreviews[uri],
-            detail = current ?: developed ?: vm.galleryPreviews[uri] ?: independent[key] ?: thumb,
+            detail = current ?: developed ?: thumb?.takeIf { effect } ?: vm.galleryPreviews[uri] ?: independent[key] ?: thumb,
             name = metadata[key]?.name ?: uri.lastPathSegment?.substringAfterLast('/') ?: "照片",
             caption = metadata[key]?.caption.orEmpty(),
             error = vm.galleryPreviewErrors[uri],
             // A decoded original must never replace an already-developed edit.
-            wallDetail = current ?: developed ?: vm.galleryPreviews[uri],
-            canRefine = current == null && developed == null,
+            wallDetail = current ?: developed ?: thumb?.takeIf { effect } ?: vm.galleryPreviews[uri],
+            canRefine = current == null && developed == null && !effect,
             sourceWidth = metadata[key]?.width ?: 0,
             sourceHeight = metadata[key]?.height ?: 0,
             sourceFormat = metadata[key]?.format.orEmpty(),
-            appearance = if (developed != null || uri == vm.currentUri && vm.rendered != null)
+            appearance = if (developed != null || effect || uri == vm.currentUri && vm.rendered != null)
                 com.spektralab.android.core.model.TableAppearance.EDITED else com.spektralab.android.core.model.TableAppearance.ORIGINAL,
         )
     }

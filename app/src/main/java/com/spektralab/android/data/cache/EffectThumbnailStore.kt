@@ -40,12 +40,12 @@ internal object EffectThumbnailStore {
         BitmapFactory.decodeFile(source.path)
     }.getOrNull()
 
-    /** 落盘一张效果图：从渲染帧缩到长边 512 再编码，同键已存在就不重复写。 */
-    fun put(context: Context, assetId: String, revision: Long, bitmap: Bitmap) {
-        if (bitmap.isRecycled) return
-        val target = fileFor(context, assetId, revision) ?: return
-        if (target.isFile && target.length() > 0L) return
-        runCatching {
+    /** 落盘一张效果图：从渲染帧缩到长边 512 再编码；返回是否真的写了（同键已有也算成功）。 */
+    fun put(context: Context, assetId: String, revision: Long, bitmap: Bitmap): Boolean {
+        if (bitmap.isRecycled) return false
+        val target = fileFor(context, assetId, revision) ?: return false
+        if (target.isFile && target.length() > 0L) return true
+        return runCatching {
             val scaled = scaleToTarget(bitmap)
             val directory = directory(context)
             if (!directory.isDirectory) directory.mkdirs()
@@ -56,13 +56,18 @@ internal object EffectThumbnailStore {
             if (scaled !== bitmap) scaled.recycle()
             if (temp.length() <= 0L || !temp.renameTo(target)) {
                 temp.delete()
-                return
+                android.util.Log.i("SpekEffect", "write failed $assetId-$revision")
+                return false
             }
             // 同一张照片只留最新一版效果图：旧修订号不会再被库里的行读到，留着只是占额度。
             removeOtherRevisions(context, assetId, revision)
             trim(context)
-        }
+            android.util.Log.i("SpekEffect", "put $assetId rev=$revision ${scaledBytes(target)}B src=${bitmap.width}x${bitmap.height}")
+            true
+        }.getOrDefault(false)
     }
+
+    private fun scaledBytes(file: File) = if (file.isFile) file.length() else 0L
 
     /** 参数又改过一版时清掉旧效果图，避免旧修订号的文件一直占着额度。 */
     fun removeOtherRevisions(context: Context, assetId: String, keepRevision: Long) {

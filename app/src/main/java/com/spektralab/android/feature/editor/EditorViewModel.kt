@@ -29,6 +29,7 @@ import com.spektralab.android.R
 import com.spektralab.android.core.model.ExportOptions
 import com.spektralab.android.core.model.EditorParams
 import com.spektralab.android.core.model.ExportRecipe
+import com.spektralab.android.data.cache.EffectThumbnailStore
 import com.spektralab.android.data.cache.ExportRenderCache
 import com.spektralab.android.data.export.ExportMetadata
 import com.spektralab.android.data.export.ExportPublisher
@@ -512,6 +513,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         set(value) { field = value; trackPreviewWork(value) }
     private var stockPreviewJob: Job? = null
     private var developedPreviewJob: Job? = null
+    private var effectThumbJob: Job? = null
     private val thumbnailJobs = mutableMapOf<Uri, Job>()
     private val thumbnailDispatcher = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)
     private val THUMBNAIL_CACHE_LIMIT = 160
@@ -1143,6 +1145,9 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     private fun rememberDevelopedPreview(bitmap: Bitmap) {
         val uri = currentUri ?: return
         val photo = photoGeneration
+        // 曲线/颜色/混色/色轮的手势中途那一帧，参数还没提交，不能当成效果图。
+        val gesturePending = sceneCurveStart != null || curveStart != null || colorStart != null ||
+            mixerStart != null || wheelStart != null
         developedPreviewJob?.cancel()
         developedPreviewJob = viewModelScope.launch {
             // The working canvas publishes every completed frame. Its tray thumbnail can wait
@@ -1158,9 +1163,66 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
             if (photo == photoGeneration && uri == currentUri && uri in photos && rendered === bitmap) {
                 developedPreviews = developedPreviews + (uri to preview)
+                if (!gesturePending) queueEffectThumbnail(uri, bitmap, photo)
             }
         }
     }
+
+    /** 画面稳定下来后落一张长边 512 的效果图缩略图：首页宫格、图库和观片台据此直接显示调过参数的成品，
+     *  不必为了缩略图重跑引擎。键是「记录身份 + 当时的参数修订号」，参数再改一版，旧的那张自动失效；
+     *  写失败或缓存被系统清掉都不提示，界面退回原图。 */
+    private fun queueEffectThumbnail(uri: Uri, bitmap: Bitmap, generation: Long) {
+        effectThumbJob?.cancel()
+        effectThumbJob = viewModelScope.launch {
+            // 比内存缩略图多等一些：连续出帧时只留最后一次，省掉中间的重复编码。
+            delay(600)
+            if (generation != photoGeneration || uri != currentUri || rendered !== bitmap || isExporting || isBatchExporting) return@launch
+            if (sceneCurveStart != null || curveStart != null || colorStart != null || mixerStart != null || wheelStart != null) return@launch
+            if (bitmap.isRecycled) return@launch
+            val key = withContext(Dispatchers.IO) { runCatching { EditStore.savedPhotoKey(app, uri) }.getOrNull() }
+            if (key == null) {
+                android.util.Log.i("SpekEffect", "skip: 库里查不到这条记录 $uri")
+                return@launch
+            }
+            val written = withContext(Dispatchers.Default) { EffectThumbnailStore.put(app, key.first, key.second, bitmap) }
+            if (!written) return@launch
+            // 刚落盘就主动把旧画面摘掉：正在显示的首页宫格、图库行、观片台卡片下一帧就换成效果图，
+            // 不等列表重新拉取，也不依赖从编辑页返回时有没有触发 refresh()。
+            savedPhotos.invalidateThumbnail(key.first)
+            refreshViewingEffect(uri, key)
+        }
+    }
+
+    /** 观片台（独立导入）和工作台照片条里这张若已按原图解出来，就地换成刚落盘的效果图，顺序和数量都不动。
+     *  旧位图不主动 recycle：它可能还挂在某一帧画面上，交给 GC，和图库那边一致。 */
+    private suspend fun refreshViewingEffect(uri: Uri, key: Pair<String, Long>) {
+        val name = uri.toString()
+        val inStand = viewingPhotos.any { it.first == name }
+        val inStrip = thumbnails.containsKey(uri)
+        if (!inStand && !inStrip) return
+        val bitmap = withContext(Dispatchers.IO) { EffectThumbnailStore.get(app, key.first, key.second) } ?: return
+        if (inStand) viewingPhotos = viewingPhotos.map { if (it.first == name) name to bitmap else it }
+        effectThumbKeys = effectThumbKeys + name
+        if (inStrip) {
+            // 照片条那张是按原图解的，丢掉重取；这次会命中刚落盘的效果图。
+            thumbnails = thumbnails - uri
+            thumbnailJobs.remove(uri)?.cancel()
+            loadThumbnail(uri)
+        }
+    }
+
+    /** 观片台／工作台的缩略图里，哪些是用落盘的效果图显示的：据此标「成品」并让放大也沿用效果。 */
+    var effectThumbKeys by mutableStateOf(setOf<String>())
+        private set
+
+    fun isEffectThumbnail(uri: Uri) = uri.toString() in effectThumbKeys
+
+    /** 缩略图优先取编辑页渲染过的成品；没渲染过、或缓存被系统清掉，交回原来的原图解码。
+     *  只在后台线程调用；记到 effectThumbKeys 里由调用方回主线程后补。 */
+    private fun effectThumbFor(uri: Uri): Bitmap? = runCatching {
+        val key = EditStore.savedPhotoKey(app, uri) ?: return null
+        EffectThumbnailStore.get(app, key.first, key.second)
+    }.getOrNull()
 
     /** Add gallery photos to the independent viewing-stand queue. */
     fun loadViewingPhotos(uris: List<Uri>) {
@@ -1176,8 +1238,11 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     viewingImportCompleted = 0
                     var failed = 0
                     for (uri in pending) {
+                        var fromEffect = false
                         val bitmap = try {
-                            withContext(Dispatchers.IO) { decodeSampled(uri, 640) }
+                            withContext(Dispatchers.IO) {
+                                effectThumbFor(uri)?.also { fromEffect = true } ?: decodeSampled(uri, 640)
+                            }
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (_: Exception) {
@@ -1186,7 +1251,11 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         }
                         if (bitmap != null) {
                             if (cleared || viewingPhotos.any { it.first == uri.toString() }) bitmap.recycle()
-                            else viewingPhotos = viewingPhotos + (uri.toString() to bitmap)
+                            else {
+                                viewingPhotos = viewingPhotos + (uri.toString() to bitmap)
+                                // 记下这张是效果图，观片台据此标「成品」，放大时也沿用效果而不是退回原图。
+                                if (fromEffect) effectThumbKeys = effectThumbKeys + uri.toString()
+                            }
                         }
                         viewingImportCompleted += 1
                     }
@@ -1203,6 +1272,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     /** Remove only the viewing-stand entry; the original photo is untouched. */
     fun removeViewingPhoto(key: String) {
         discardGalleryPreview(Uri.parse(key))
+        effectThumbKeys = effectThumbKeys - key
         viewingPhotos = viewingPhotos.filterNot { it.first == key }
     }
 
@@ -2420,6 +2490,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         cameraWbJob?.cancel()
         stockPreviewJob?.cancel()
         developedPreviewJob?.cancel()
+        effectThumbJob?.cancel()
         pendingFrame = null
         engine?.cancel()
         return photoGeneration
@@ -2797,8 +2868,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         if (uri !in photos || thumbnails.containsKey(uri) || thumbnailJobs[uri]?.isActive == true) return
         val request = viewModelScope.launch {
             try {
-                val bmp = withContext(thumbnailDispatcher) { decodeSampled(uri, 200) }
+                var fromEffect = false
+                val bmp = withContext(thumbnailDispatcher) {
+                    effectThumbFor(uri)?.also { fromEffect = true } ?: decodeSampled(uri, 200)
+                }
                 if (uri in photos && !thumbnails.containsKey(uri)) {
+                    if (fromEffect) effectThumbKeys = effectThumbKeys + uri.toString()
                     val next = LinkedHashMap(thumbnails)
                     next[uri] = bmp
                     // 缩略图缓存设上限，超出后按最早写入的顺序淘汰，避免原图多时内存无限增长。

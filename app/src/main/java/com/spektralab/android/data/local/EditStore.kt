@@ -231,6 +231,13 @@ object EditStore {
     }
     @Synchronized
     internal fun savedSession(context: Context) = checked { repository(context).session() }
+
+    /** 效果图缩略图的键：库里的记录身份 + 当前参数修订号；只在库里建过行的照片才有。 */
+    @Synchronized
+    internal fun savedPhotoKey(context: Context, uri: Uri): Pair<String, Long>? = checked {
+        repository(context).findByUri(uri)?.let { it.assetId to it.revision }
+    }
+
     @Synchronized
     internal fun saveSession(context: Context, session: com.spektralab.android.core.model.SavedEditSession) {
         try {
