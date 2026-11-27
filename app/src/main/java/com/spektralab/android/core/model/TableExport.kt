@@ -34,7 +34,7 @@ internal data class TableExportOptions(
     val viewport: Boolean = false,
 ) {
     fun validated() = apply {
-        require(longEdge == 1600 || longEdge == 2400) { "TABLE_EXPORT_CAPACITY" }
+        require(longEdge in 1024..8192) { "TABLE_EXPORT_CAPACITY" }
         require(!transparent || format == TableOutputFormat.PNG) { "TABLE_EXPORT_TRANSPARENCY" }
         require(title.isEmpty() || AlbumNames.normalize(title) == title) { "TABLE_EXPORT_TITLE" }
         require(date.length <= 32 && date.none(Char::isISOControl)) { "TABLE_EXPORT_TITLE" }
@@ -88,7 +88,10 @@ internal data class TableExportRequest(
             (height - (content.height + heading) * scale) / 2f + heading * scale - (content.top - region.top) * scale,
             margin, heading, span)
     }
-    companion object { const val MAX_PIXELS = 6_000_000L }
+    companion object {
+        // 放开到 900 万：手机长边满幅（约 2400px）与 3000px 两档都要能出。
+        const val MAX_PIXELS = 9_000_000L
+    }
 }
 
 internal data class TableExportPlan(

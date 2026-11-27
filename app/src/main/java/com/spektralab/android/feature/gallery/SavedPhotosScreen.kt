@@ -35,7 +35,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -79,8 +81,9 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp).heightIn(min = 56.dp),
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = ::back, enabled = enabled && !selection.pending) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.photos_back)) }
-            Text(if (selection.active) stringResource(R.string.photos_selected, selection.selected.size) else stringResource(R.string.photos_title),
-                Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            // 与编辑页顶栏同一套：只写页面名，不在这里报选择张数。
+            Text(stringResource(R.string.photos_title), Modifier.weight(1f),
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             TextButton(onClick = { if (selection.active) selection.clear() else selection.begin() },
                 enabled = canAct && (selection.active || controller.photos.isNotEmpty())) {
                 Text(stringResource(if (selection.active) R.string.library_cancel else R.string.photos_select))
@@ -103,46 +106,30 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
         Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.TopCenter) {
             LazyColumn(Modifier.widthIn(max = 860.dp).fillMaxSize().navigationBarsPadding(),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
                 item {
-                    Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(if (selection.active) R.string.photos_selection_detail else R.string.photos_hint),
-                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // 内联控件的取消方式说明。
-                        Text("双击星标、色标可取消选择", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .8f))
-                    }
+                    LibraryFilterBar(controller, canAct && !selection.active, onRestore)
                 }
-                item {
-                    LibraryFilterBar(controller, canAct && !selection.active)
+                // 只在浏览态提示：多选时列表项里不出现星级/色标控件。
+                if (!selection.active) item {
+                    Text("星级、色标双击恢复", Modifier.padding(bottom = 4.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                controller.savedSession?.takeIf { it.photos.isNotEmpty() && !selection.active }?.let { session -> item {
-                    Row(Modifier.fillMaxWidth().clip(TheiaShapes.panel)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(stringResource(R.string.photos_session_title), style = MaterialTheme.typography.titleSmall)
-                            Text(stringResource(R.string.photos_session_detail, session.photos.size, session.selected.size),
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        TextButton(onClick = { controller.restoreSession(onRestore) }, enabled = enabled && !controller.loading,
-                            modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.photos_session_resume)) }
-                    }
-                } }
+
                 // 多选时，同一位置换成「把选中的放入工作台」：只放勾选的那几张，不是把整列都放进去。
                 if (selection.active) item {
-                    Row(Modifier.fillMaxWidth().clip(TheiaShapes.panel)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(16.dp),
+                    Row(Modifier.fillMaxWidth().height(40.dp).clip(TheiaShapes.panel)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("把选中的放入工作台", style = MaterialTheme.typography.titleSmall)
-                            Text("只加入已经勾选的 ${selection.selected.size} 张，未勾选的不动，原片和调整不受影响",
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text("选中${selection.selected.size}张放入工作台", Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleSmall, maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         TextButton(onClick = {
                             onAddAllToWorkbench(selection.selected.values.map { Uri.parse(it.uri) })
                             selection.clear()
                         }, enabled = canAct && selection.selected.isNotEmpty(),
-                            modifier = Modifier.heightIn(min = 48.dp)) { Text("放入工作台") }
+                            modifier = Modifier.height(36.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)) { Text("放入") }
                     }
                 }
                 if (controller.loading) item {

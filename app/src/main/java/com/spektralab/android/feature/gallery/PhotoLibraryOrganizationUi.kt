@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.spektralab.android.R
 import com.spektralab.android.core.model.AlbumNames
 import com.spektralab.android.core.model.PhotoAlbum
@@ -66,7 +67,8 @@ internal fun PhotoMarks(rating: Int, label: PhotoLabel) {    if (rating == 0 && 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolean) {
+internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolean,
+                              onRestore: (com.spektralab.android.core.model.SavedEditSession) -> Unit = {}) {
     var albumMenu by remember { mutableStateOf(false) }
     var filters by remember { mutableStateOf(false) }
     val activeAlbum = controller.organization.albums.firstOrNull { it.id == controller.filter.albumId }
@@ -77,8 +79,8 @@ internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolea
                 val ungrouped = controller.filter.ungroupedOnly
                 OutlinedButton(onClick = { albumMenu = true }, enabled = enabled, shape = TheiaShapes.control,
                     contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.heightIn(min = 48.dp).fillMaxWidth()) {
-                    Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp))
+                    modifier = Modifier.heightIn(min = 40.dp).fillMaxWidth()) {
+                    Icon(Icons.Rounded.FolderOpen, null, Modifier.size(17.dp))
                     Spacer(Modifier.width(8.dp))
                     Text((if (ungrouped) stringResource(R.string.library_ungrouped) else activeAlbum?.name)
                         ?: stringResource(R.string.library_all_photos), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -109,18 +111,25 @@ internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolea
             }
             FilledTonalButton(onClick = { filters = true }, enabled = enabled, shape = TheiaShapes.control,
                 contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier.heightIn(min = 48.dp)) {
-                Icon(Icons.Rounded.FilterList, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                modifier = Modifier.heightIn(min = 40.dp)) {
+                Icon(Icons.Rounded.FilterList, null, Modifier.size(17.dp)); Spacer(Modifier.width(6.dp))
                 Text(stringResource(if (controller.filter.minimumRating != 0 || controller.filter.label != null || controller.filter.unratedOnly)
-                    R.string.library_filters_active else R.string.library_filters), maxLines = 1)
+                    R.string.library_filters_active else R.string.library_filters), maxLines = 1, fontSize = 13.sp)
             }
-            IconButton(onClick = controller.organization::manageAlbums, enabled = enabled, modifier = Modifier.size(48.dp)) {
+            IconButton(onClick = controller.organization::manageAlbums, enabled = enabled, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Rounded.FolderCopy, contentDescription = stringResource(R.string.library_album_manage))
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.library_result_count, controller.matchingCount, controller.totalCount),
                 Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // 上次的工作台不再占一整块卡片，恢复入口收进这一行。
+            controller.savedSession?.takeIf { it.photos.isNotEmpty() }?.let { session ->
+                TextButton(onClick = { controller.restoreSession(onRestore) }, enabled = enabled && !controller.loading,
+                    contentPadding = PaddingValues(horizontal = 10.dp), modifier = Modifier.height(40.dp)) {
+                    Text(stringResource(R.string.photos_session_resume), fontSize = 13.sp)
+                }
+            }
             if (controller.filter.active) TextButton(onClick = { controller.applyFilter(PhotoLibraryFilter()) }, enabled = enabled) {
                 Text(stringResource(R.string.library_filter_clear))
             }

@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.spektralab.android.ui.theme.TheiaShapes
@@ -170,7 +171,9 @@ private fun ContactSheet(
     Column(Modifier.fillMaxSize().background(background)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp).heightIn(min = 60.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, backDescription, tint = ink) }
-            Text("观片台", Modifier.weight(1f).padding(start = 4.dp), color = ink, style = MaterialTheme.typography.titleLarge)
+            // 与照片图库、编辑页顶栏同一套字号。
+            Text("观片台", Modifier.weight(1f).padding(start = 4.dp), color = ink, fontSize = 14.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, maxLines = 1)
             IconButton(onClick = onMagnifierChange, enabled = photos.isNotEmpty()) {
                 Icon(Icons.Rounded.Search, if (magnifierOn) "关闭放大镜" else "打开放大镜",
                     tint = if (magnifierOn) StandColors.brown else muted)

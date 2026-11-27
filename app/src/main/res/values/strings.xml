@@ -138,7 +138,6 @@
     <string name="edit_apply_error">暂时无法完成应用。请重新检查后再试；已记录的批次会在下次读取时恢复。</string>
     <string name="edit_presets_storage_error">无法读取或保存编辑预设，可能是名称冲突、版本不支持或存储不可用。原文件已保留，可重新读取后再试。</string>
     <string name="photos_title">照片图库</string>
-    <string name="photos_hint">点击照片，接着上次的调整继续显影。旧版照片重新导入后，也会加入这里。</string>
     <string name="photos_back">返回首页</string>
     <string name="photos_refresh">刷新照片图库</string>
     <string name="photos_import">导入照片</string>
@@ -227,8 +226,6 @@
     <string name="photos_source_baseline_missing">这份记录还没有原片校验，无法确认另一个位置的文件。请先恢复原位置的访问权限；原有调整仍保留。</string>
     <string name="photos_source_conflict">所选文件已经属于图库中的另一份记录，不能合并或覆盖它。</string>
     <string name="photos_source_stale">这份记录刚刚发生了变化，请刷新图库后重试。已有调整仍保留。</string>
-    <string name="photos_session_title">上次的工作台</string>
-    <string name="photos_session_detail">%1$d 张照片 · 已勾选 %2$d 张导出</string>
     <string name="photos_session_resume">恢复工作台</string>
     <string name="photos_session_save_error">工作台暂时无法保存，上次记录已保留。请稍后更改照片选择后重试。</string>
     <string name="photos_session_capacity_error">工作台的照片数量或地址超过了保存容量。当前编辑仍可继续，上次工作台记录已保留。</string>
@@ -349,16 +346,13 @@
     <string name="table_output_cancelling">正在取消项目导出…</string>
     <string name="print_edr_unavailable">仅彩色负片搭配彩色相纸时可用</string>
     <string name="photos_select">选择</string>
-    <string name="photos_selected">已选 %1$d 张</string>
     <string name="photos_select_photo">选择照片 %1$s</string>
-    <string name="photos_select_all">全选筛选结果 (%1$d)</string>
-    <string name="photos_selection_hint">仅从应用图库移除，原片和编辑保留</string>
-    <string name="photos_selection_detail">轻点照片切换选择。全选包含当前筛选结果中尚未加载的照片。</string>
+    <string name="photos_select_all">全选</string>
     <string name="photos_remove">从图库移除</string>
-    <string name="photos_remove_count">移除 (%1$d)</string>
+    <string name="photos_remove_count">移除</string>
     <string name="photos_add_album">加入相册</string>
     <string name="photos_add_viewing">加入观片台</string>
-    <string name="photos_add_project">加入观片台项目</string>
+    <string name="photos_add_project">观片台项目</string>
     <string name="photos_choose_project">选择观片台项目</string>
     <string name="photos_choose_album">选择相册</string>
     <string name="photos_added_to_album">已将 %2$d 张照片加入“%1$s”</string>

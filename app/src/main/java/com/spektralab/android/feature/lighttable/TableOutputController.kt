@@ -15,6 +15,8 @@ import kotlinx.coroutines.*
 internal class TableOutputController(private val context: Context, private val scope: CoroutineScope) {
     var shown by mutableStateOf(false); private set
     var preparing by mutableStateOf(false); private set
+    /** 本机屏幕长边像素：观片台成片至少要和屏幕同长边，不能还是 1600。 */
+    val screenLongEdge: Int = context.resources.displayMetrics.let { maxOf(it.widthPixels, it.heightPixels) }
     var options by mutableStateOf(TableExportOptions()); private set
     var request by mutableStateOf<TableExportRequest?>(null); private set
     var preview by mutableStateOf<Bitmap?>(null); private set
@@ -29,7 +31,7 @@ internal class TableOutputController(private val context: Context, private val s
         if (preparing) return
         visit++; val token = visit
         shown = true; preparing = true; preview = null; error = null; result = null
-        options = TableExportOptions(title = title)
+        options = TableExportOptions(title = title, longEdge = screenLongEdge)
         this.images = images
         scope.launch {
             try {

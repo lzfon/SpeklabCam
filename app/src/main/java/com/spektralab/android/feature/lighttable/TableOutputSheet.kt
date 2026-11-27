@@ -94,7 +94,7 @@ internal fun TableOutputSheet(vm: EditorViewModel) {
                 }
                 item {
                     OutputSection(stringResource(R.string.table_output_size)) {
-                        listOf(1600, 2400).forEach { edge -> FilterChip(options.longEdge == edge, { controller.update(options.copy(longEdge = edge)) },
+                        listOf(controller.screenLongEdge, 3000).distinct().forEach { edge -> FilterChip(options.longEdge == edge, { controller.update(options.copy(longEdge = edge)) },
                             enabled = enabled, label = { Text("$edge px") }) }
                     }
                     plan?.let { Text(stringResource(R.string.table_output_pixels, it.width, it.height), style = MaterialTheme.typography.bodySmall,
