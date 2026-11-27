@@ -30,12 +30,12 @@ import com.spektralab.android.core.color.ColorWheels
 import com.spektralab.android.core.color.WheelAdjustment
 import com.spektralab.android.core.color.WheelZone
 import com.spektralab.android.feature.editor.EditorViewModel
-import com.spektralab.android.ui.components.EditorSection
+import com.spektralab.android.ui.components.MenuBody
 import com.spektralab.android.ui.theme.TheiaShapes
 import kotlin.math.*
 
 @Composable
-internal fun ColorWheelEditor(vm: EditorViewModel) {
+internal fun ColorWheelEditor(vm: EditorViewModel, embedded: Boolean = false) {
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
     val zone = WheelZone.entries[selectedIndex]
     val wheels = vm.params.colorWheels
@@ -52,7 +52,7 @@ internal fun ColorWheelEditor(vm: EditorViewModel) {
     }
     fun change(value: WheelAdjustment) = vm.changeWheels(vm.params.colorWheels.with(zone, value))
 
-    EditorSection(stringResource(R.string.wheels_title), stringResource(R.string.wheels_summary)) {
+    MenuBody(embedded, stringResource(R.string.wheels_title), stringResource(R.string.wheels_summary)) {
         if (vm.params.unreadableColorWheels != null) {
             Text(stringResource(R.string.wheels_unsupported), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)

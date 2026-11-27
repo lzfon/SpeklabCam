@@ -1,40 +1,31 @@
 package com.spektralab.android.feature.editor.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Build
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.OpenInFull
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.*
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spektralab.android.R
 import com.spektralab.android.ui.theme.TheiaShapes
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.*
 
 /** Resizing and full-screen viewing only change layout; both reuse the current image. */
 @Composable
@@ -44,7 +35,6 @@ internal fun AdjustmentWorkspace(
     comparing: Boolean,
     canCompare: Boolean,
     onCompare: () -> Unit,
-    onFullScreen: () -> Unit,
     onDone: () -> Unit,
     onExport: () -> Unit = {},
     onReset: () -> Unit = {},
@@ -60,23 +50,19 @@ internal fun AdjustmentWorkspace(
     onEditRecipe: () -> Unit = {},
     onCopyRecipe: () -> Unit = {},
     canTransfer: Boolean = false,
+    workbenchOpen: Boolean = true,
+    onWorkbenchToggle: () -> Unit = {},
+    onCapture: () -> Unit = {},
     modifier: Modifier = Modifier,
     preview: @Composable (Modifier) -> Unit,
-    controls: @Composable () -> Unit,
+    persistentControls: @Composable () -> Unit = {},
+    menuBoard: @Composable ColumnScope.() -> Unit = {},
 ) {
-    var controlsCollapsed by rememberSaveable { mutableStateOf(false) }
-    // 预览右上角默认只是一颗半透明绿悬浮点，点开才出现前后对比/全屏。
-    var previewToolsOpen by rememberSaveable { mutableStateOf(false) }
     var toolMenuOpen by remember { mutableStateOf(false) }
     var panelFraction by rememberSaveable { mutableFloatStateOf(.5f) }
     var lastMode by rememberSaveable { mutableStateOf(mode) }
     val scrollStates = rememberSaveableStateHolder()
-    LaunchedEffect(mode) {
-        if (lastMode != mode) {
-            controlsCollapsed = false
-            lastMode = mode
-        }
-    }
+    LaunchedEffect(mode) { lastMode = mode }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val heightPx = with(density) { maxHeight.toPx() }.coerceAtLeast(1f)
@@ -89,56 +75,50 @@ internal fun AdjustmentWorkspace(
             (maxHeight * panelFraction).coerceIn(minimumPanel, maxHeight - minimumPreview)
         val handleHeight = 48.dp
         val dragState = rememberDraggableState { delta ->
-            controlsCollapsed = false
             panelFraction = (panelFraction - delta / heightPx).coerceIn(.3f, .72f)
         }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 preview(Modifier.fillMaxSize())
-                if (previewToolsOpen) {
-                    Row(Modifier.align(Alignment.TopEnd).padding(8.dp)
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = .85f), TheiaShapes.control)) {
-                        PreviewComparisonButton(comparing, canCompare, onCompare)
-                        IconButton(onClick = onFullScreen, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.OpenInFull, "全屏预览", modifier = Modifier.size(20.dp))
-                        }
-                        IconButton(onClick = { previewToolsOpen = false }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.ExpandLess, "收起预览工具", modifier = Modifier.size(20.dp))
-                        }
-                    }
-                } else {
-                    // 悬浮点尽量不挡照片：26dp 半透明绿圆，点一下展开。
-                    Box(Modifier.align(Alignment.TopEnd).padding(10.dp).size(26.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = .32f))
-                        .border(.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = .75f), CircleShape)
-                        .clickable(role = Role.Button) { previewToolsOpen = true }
-                        .semantics { contentDescription = "展开预览工具" },
-                        contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(8.dp).clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = .9f)))
-                    }
+                // 预览工具只剩前后对比一颗：右上角、只有图标、不加圆底。
+                // 全屏放大页已删除，放大改成双指直接在画面上缩放（见 PhotoCanvas）。
+                Box(Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 4.dp)) {
+                    PreviewComparisonButton(comparing, canCompare, onCompare)
                 }
             }
             Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, tonalElevation = 0.dp, shape = TheiaShapes.sheet,
                 modifier = Modifier.fillMaxWidth()) {
                 Column {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f), thickness = .5.dp)
-                    // 单行控制条：左（收起 · 重置 · 裁剪）居中拖动条 右（撤销 · 重做 · 导出）。
+                    // 单行控制条：左（工作台 · 工具菜单）居中拖动条 右（撤销 · 重做 · 导出）。
                     // 三组各自相对整行中线对齐，保证图标/文字落在同一条水平线上。
                     Box(Modifier.fillMaxWidth().height(handleHeight).padding(horizontal = 8.dp)) {
-                        Row(Modifier.align(Alignment.CenterStart)) {
-                            IconButton(onClick = { controlsCollapsed = !controlsCollapsed }, modifier = Modifier.size(36.dp)) {
-                                Icon(if (controlsCollapsed) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                    contentDescription = if (controlsCollapsed) "展开参数" else "收起参数",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp))
+                        Row(Modifier.align(Alignment.CenterStart),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            // 工作台按钮：文字 + 箭头。收起时是「上箭头」（点它把工作台拉上来），
+                            // 弹出时是「下箭头」（点它收下去）。参数栏整体的隐藏仍由一级菜单负责。
+                            Row(
+                                Modifier.clip(RoundedCornerShape(10.dp))
+                                    .clickable(role = Role.Button, onClick = onWorkbenchToggle)
+                                    .semantics {
+                                        contentDescription =
+                                            if (workbenchOpen) "收起工作台" else "弹出工作台"
+                                    }
+                                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("工作台", fontSize = 14.sp, lineHeight = 18.sp, maxLines = 1,
+                                    color = MaterialTheme.colorScheme.primary)
+                                Icon(if (workbenchOpen) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowUp,
+                                    null, tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp))
                             }
                             // 工具菜单：重置、裁剪、编辑配方、复制配方收到一个入口里。
                             Box {
-                                IconButton(onClick = { toolMenuOpen = true }, modifier = Modifier.size(36.dp)
+                                IconButton(onClick = { toolMenuOpen = true }, modifier = Modifier.size(34.dp)
                                     .semantics { contentDescription = "打开工具菜单" }) {
-                                    Icon(Icons.Rounded.Build, null, modifier = Modifier.size(16.dp),
+                                    Icon(Icons.Rounded.Build, null, modifier = Modifier.size(20.dp),
                                         tint = MaterialTheme.colorScheme.primary)
                                 }
                                 DropdownMenu(expanded = toolMenuOpen, onDismissRequest = { toolMenuOpen = false }) {
@@ -171,6 +151,11 @@ internal fun AdjustmentWorkspace(
                                         onClick = { toolMenuOpen = false; onCopyRecipe() }, enabled = canTransfer)
                                 }
                             }
+                            IconButton(onClick = onCapture, modifier = Modifier.size(34.dp)
+                                .semantics { contentDescription = "拍摄" }) {
+                                Icon(painterResource(R.drawable.ic_spk_tab_capture), null,
+                                    modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                            }
                         }
                         Box(Modifier.align(Alignment.Center).width(92.dp).fillMaxHeight()
                             .draggable(dragState, Orientation.Vertical)
@@ -179,15 +164,17 @@ internal fun AdjustmentWorkspace(
                                 stateDescription = "上下拖动调整照片与参数的空间"
                                 progressBarRangeInfo = ProgressBarRangeInfo(panelFraction, .3f.. .72f)
                                 setProgress {
-                                    controlsCollapsed = false
                                     panelFraction = it.coerceIn(.3f, .72f)
                                     true
                                 }
                             }, contentAlignment = Alignment.Center) {
-                            Box(Modifier.size(44.dp, 4.dp).background(MaterialTheme.colorScheme.outline,
+                            // 把手横线缩短到原来一半，拖动热区仍是 92dp 宽。
+                            Box(Modifier.size(22.dp, 4.dp).background(MaterialTheme.colorScheme.outline,
                                 RoundedCornerShape(2.dp)))
                         }
-                        Row(Modifier.align(Alignment.CenterEnd)) {
+                        Row(Modifier.align(Alignment.CenterEnd),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
                             ControlButton("撤销上一步", canUndo, onUndo) { tint ->
                                 Icon(painterResource(R.drawable.ic_darkroom_undo_2), null, Modifier.size(20.dp), tint = tint)
                             }
@@ -205,13 +192,16 @@ internal fun AdjustmentWorkspace(
                             }
                         }
                     }
-                    if (!controlsCollapsed) {
-                      scrollStates.SaveableStateProvider(mode) {
-                        Column(Modifier.fillMaxWidth().heightIn(max = (panelHeight - handleHeight).coerceAtLeast(96.dp))
-                            .verticalScroll(rememberScrollState())) {
-                            controls()
+                    // 工作台组：照片条在上、胶片 / 相纸栏在下，整组跟着工作台按钮弹出 / 收起。
+                    AnimatedVisibility(visible = workbenchOpen, enter = MenuEnter, exit = MenuExit,
+                        label = "workbench-pop") {
+                        Column(Modifier.fillMaxWidth()) { persistentControls() }
+                    }
+                    Column(Modifier.fillMaxWidth().heightIn(max = (panelHeight - handleHeight).coerceAtLeast(140.dp))) {
+                        scrollStates.SaveableStateProvider(mode) {
+                            // 菜单板自己带列权重：二级药丸固定在顶上，三级参数在自己的空间里滚。
+                            Column(Modifier.fillMaxWidth()) { menuBoard() }
                         }
-                      }
                     }
                 }
             }
@@ -219,61 +209,6 @@ internal fun AdjustmentWorkspace(
     }
 }
 
-@Composable
-internal fun AdjustmentFullscreen(
-    mode: String,
-    fileName: String,
-    comparing: Boolean,
-    canCompare: Boolean,
-    onCompare: () -> Unit,
-    onClose: () -> Unit,
-    preview: @Composable (Modifier) -> Unit,
-) {
-    // 全屏预览的双指缩放/平移：只改显示变换，不重渲染、不动任何参数。
-    var zoom by rememberSaveable { mutableFloatStateOf(1f) }
-    var panX by rememberSaveable { mutableFloatStateOf(0f) }
-    var panY by rememberSaveable { mutableFloatStateOf(0f) }
-            Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.Close, "关闭全屏预览", modifier = Modifier.size(22.dp))
-                        }
-                        Text(fileName, Modifier.weight(1f).padding(horizontal = 8.dp), fontSize = 13.sp,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (zoom != 1f) TextButton(onClick = { zoom = 1f; panX = 0f; panY = 0f }) {
-                            Text("回正 ${(zoom * 100).toInt()}%", fontSize = 12.sp)
-                        }
-                        PreviewComparisonButton(comparing, canCompare, onCompare)
-                    }
-                    Box(Modifier.weight(1f).fillMaxWidth()
-                        .semantics { contentDescription = "全屏照片预览" }
-                        .pointerInput(Unit) {
-                            detectTransformGestures { centroid, pan, gestureZoom, _ ->
-                                val newZoom = (zoom * gestureZoom).coerceIn(1f, 6f)
-                                // 回缩到 1 倍时同步把平移归零，画面一定回到居中。
-                                if (newZoom == 1f) { panX = 0f; panY = 0f; zoom = 1f } else {
-                                    val fx = centroid.x - size.width / 2f
-                                    val fy = centroid.y - size.height / 2f
-                                    panX = (panX + fx * (1f - gestureZoom)).coerceIn(-size.width * (newZoom - 1f) / 2f, size.width * (newZoom - 1f) / 2f)
-                                    panY = (panY + fy * (1f - gestureZoom)).coerceIn(-size.height * (newZoom - 1f) / 2f, size.height * (newZoom - 1f) / 2f)
-                                    zoom = newZoom
-                                }
-                            }
-                        }) {
-                        preview(Modifier.fillMaxSize().graphicsLayer {
-                            scaleX = zoom; scaleY = zoom
-                            translationX = if (zoom > 1f) panX else 0f
-                            translationY = if (zoom > 1f) panY else 0f
-                        })
-                    }
-                    Text("$mode · 原片始终保留 · 双指缩放查看细节", Modifier.align(Alignment.CenterHorizontally)
-                        .padding(horizontal = 12.dp, vertical = 8.dp).semantics { contentDescription = "全屏预览说明" },
-                        fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-}
 
 /** 控制条里的单个图标按钮：内容由调用处决定，颜色统一跟随主题绿 / 禁用灰。 */
 @Composable

@@ -122,7 +122,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     .padding(horizontal = 24.dp, vertical = 28.dp),
             ) {
                 // ---- 头部：名称、口号、版本 ----
-                Text("SpekLab相机", style = MaterialTheme.typography.headlineMedium,
+                Text("SpeklabCam", style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.semantics { heading() })
                 Spacer(Modifier.height(6.dp))
                 Text("胶片与暗房模拟", style = MaterialTheme.typography.bodyMedium,
@@ -214,7 +214,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Text("一间装进口袋的数字暗房。导入照片后按真实胶片的成像过程走一遍——底片测光、" +
                     "显影、放大机曝光、相纸显影——再把喜欢的色彩带回相册。\n" +
                     "它与原版 Theia 的区别在于：底层色彩科学沿用同一套引擎（我们没有改动引擎源码），" +
-                    "而把日常拍完就用的完整链路补齐了：拍完直接冲印、RAW 自动导入、默认胶片与相纸、" +
+                    "而把日常拍完就用的完整链路补齐了：拍完直接冲印、RAW 自动导入、" +
                     "自己的配方库、导出时的文件名/尺寸/色域/元数据控制，以及全套中文化与失败反馈。",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
@@ -223,16 +223,15 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     modifier = Modifier.semantics { heading() })
                 Spacer(Modifier.height(8.dp))
                 Text("· 拍摄闭环：拍完回应用直接冲印，RAW（DNG）自动导入做了三重防呆，不再报「不支持的 RAW」；\n" +
-                    "· 材料默认值：设置里可选默认胶片 / 默认相纸（含 auto），与「智能显影」分工明确，优先级为" +
-                    "已存编辑 > 我的配方 > 默认材料 > 自动选片；\n" +
+                    "· 选片口径：新照片用哪支胶片完全交给「智能显影」按画面挑（设置里的「材料」已撤下）；\n" +
                     "· 暗房能力：胶片模拟总开关、胶片前曲线（EV 坐标）、垂直/水平透视校正、成片裁切（只裁成片，不重算胶片物理量）；\n" +
                     "· 配方系统：我的配方支持重命名 / 删除 / 导入 / 导出 JSON，可跨机迁移，也可作为智能配方的起点；\n" +
                     "· 导出能力：HEIF、TIFF（含 Deflate 无损）、色域四选并写入对应 ICC、自定义长边/短边/像素总数、" +
-                    "文件名模板、导出配方、批量导出、四栏折叠界面；\n" +
+                    "文件名模板与自定义前缀、导出方案、批量导出、四栏折叠界面；\n" +
                     "· 元数据完整性：成片保留原文件名、GPS 位置，并把拍摄时间的时区偏移写全（修掉相册时间被按 UTC 记账导致的 8 小时偏差）；\n" +
-                    "· 查看与交互：全屏预览双指缩放（1–6 倍）、原尺寸细节检查、跨会话撤销重做、所有滑轨带复位、失败给中文明确原因；\n" +
+                    "· 查看与交互：预览画面双指缩放（1–6 倍）、右上角前后对比、跨会话撤销重做、所有滑轨带复位、失败给中文明确原因；\n" +
                     "· 界面收纳：低使用率入口（数字中间片、软打样、高清预览、效果细节放大）从界面撤下，实现代码全部保留；\n" +
-                    "· 独立身份：包名 com.spektralabcam.android，可与原版 Theia 在同一台手机并存安装，互不覆盖数据。",
+                    "· 改版测试线：包名 com.spektralabcam.revamp，与正式版 SpekLab相机、原版 Theia 都能并存安装，互不覆盖数据。",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Spacer(Modifier.height(20.dp))
@@ -327,11 +326,12 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Text("交互方式说明", style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.semantics { heading() })
                 Spacer(Modifier.height(8.dp))
-                Text("· 预览画面长按＝查看原图，松手恢复；\n" +
-                    "· 预览右上角绿色悬浮点＝展开工具（前后对比 · 全屏 · 收起），全屏预览里双指缩放、右上角「回正」复位；\n" +
+                Text("· 预览画面按住＝查看原图，松手恢复；\n" +
+                    "· 预览右上角＝前后对比开关（只剩图标，画面中间出分割线）；双指直接在画面上缩放（1–6 倍）看细节，独立的放大页已取消；\n" +
                     "· 扳手菜单＝重置 / 裁剪 / 成片裁切 / 编辑配方 / 复制配方；\n" +
                     "· 每条滑轨右侧小圆箭头＝单条复位；曲线点位滑轨同样带复位；\n" +
-                    "· 工作台闲置几秒自动收起，点「工作台」一条即可展开；\n" +
+                    "· 控制条左端＝弹出 / 收起工作台（照片条 + 胶片 / 相纸栏），闲置几秒也会自动收起；\n" +
+                    "· 编辑页分三级：底栏一级页签 → 药丸二级 → 就地展开的三级参数，曲线也在参数里就地展开；\n" +
                     "· 所有失败都会用中文明确告诉你原因，不会静默。",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 

@@ -58,6 +58,8 @@ internal fun EditorPhotoStrip(
     onAddPhotos: () -> Unit,
     onSmartDevelop: () -> Unit,
     modifier: Modifier = Modifier,
+    // 挪进工作台组后由控制条的工作台按钮统一折叠，这里就不再自己收。
+    allowCollapse: Boolean = true,
 ) {
     val enabled = !vm.busy && !vm.isExporting && !vm.isBatchExporting
     val strip = rememberLazyListState()
@@ -77,7 +79,7 @@ internal fun EditorPhotoStrip(
     var activity by remember { mutableStateOf(0) }
     LaunchedEffect(collapsed, activity, com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide,
         com.spektralab.android.ui.components.UiPrefs.workbenchHideSeconds) {
-        if (!collapsed && com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide) {
+        if (allowCollapse && !collapsed && com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide) {
             delay(com.spektralab.android.ui.components.UiPrefs.workbenchHideSeconds * 1000L)
             collapsed = true
         }
@@ -90,7 +92,7 @@ internal fun EditorPhotoStrip(
             }
         }
     }
-    if (collapsed) {
+    if (allowCollapse && collapsed) {
         // 收起成一条把手，显示「上箭头 + 工作台」：点一下向上展开照片列表。
         Row(modifier.fillMaxWidth().height(24.dp).background(colors.surfaceContainerLow)
             .clickable { collapsed = false; activity++ }
@@ -156,10 +158,7 @@ internal fun EditorPhotoStrip(
             Icon(Icons.Rounded.Add, "添加编辑照片", Modifier.size(20.dp),
                 tint = if (enabled) colors.primary else colors.onSurfaceVariant)
         }
-        IconButton(onClick = { collapsed = true }, modifier = Modifier.size(40.dp)
-            .semantics { contentDescription = "收起工作台" }) {
-            Icon(Icons.Rounded.KeyboardArrowDown, "收起工作台", Modifier.size(20.dp), tint = colors.primary)
-        }
+        // 行尾的「收起工作台」按钮已删：收起交给控制条上的工作台按钮，右侧只剩智能显影与添加两颗。
     }
 }
 

@@ -111,6 +111,20 @@ fun EditorSection(
     }
 }
 
+/**
+ * 三级菜单板的参数体容器：`embedded = true` 时只画控件本身（展开入口是二级药丸），
+ * 否则退回旧的 [EditorSection] 折叠样式，供编辑配方一类的整屏列表继续使用。
+ */
+@Composable
+fun MenuBody(
+    embedded: Boolean,
+    title: String,
+    summary: String,
+    content: @Composable () -> Unit,
+) {
+    if (embedded) content() else EditorSection(title, summary, content = content)
+}
+
 @Composable
 fun ChoiceStrip(options: List<String>, selected: String, onSelect: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerLow, TheiaShapes.control)) {

@@ -8,7 +8,7 @@ import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** 导出配方的持久化（filesDir/recipes.json）。默认配方 + 自定义配方一起存。 */
+/** 导出方案的持久化（filesDir/recipes.json）。默认方案 + 自定义方案一起存。 */
 object RecipeStore {
     private const val FILE = "recipes.json"
 

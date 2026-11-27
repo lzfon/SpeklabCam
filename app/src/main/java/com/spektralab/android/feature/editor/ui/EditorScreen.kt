@@ -33,18 +33,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Bookmarks
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -53,7 +45,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,14 +55,13 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
 import com.spektralab.android.EditorTab
 import com.spektralab.android.feature.about.AboutScreen
 import com.spektralab.android.feature.editor.EditorViewModel
@@ -82,7 +72,6 @@ import com.spektralab.android.feature.lighttable.FilmCanvasState
 import com.spektralab.android.feature.lighttable.GalleryScreen
 import com.spektralab.android.feature.smartdevelop.SmartDevelopSheet
 import com.spektralab.android.ui.components.DarkroomTopBar
-import com.spektralab.android.ui.components.SliderRow
 import com.spektralab.android.ui.theme.TheiaShapes
 import kotlin.math.roundToInt
 
@@ -96,28 +85,42 @@ internal fun EditorScreen(
     viewingCanvasState: FilmCanvasState,
     homeStandEditRequest: Int,
     onOpenCamera: () -> Unit = {},
+    onOpenTasks: () -> Unit = {},
+    settingsController: com.spektralab.android.feature.settings.SettingsController,
 ) {
     var addToStage by rememberSaveable { mutableStateOf(false) }
     var smartDevelopVisible by rememberSaveable { mutableStateOf(false) }
     var aboutVisible by rememberSaveable { mutableStateOf(false) }
-    var selectedTab by rememberSaveable { mutableStateOf(EditorTab.Develop) }
-    var previousTab by rememberSaveable { mutableStateOf(EditorTab.Develop) }
+    var selectedTab by rememberSaveable { mutableStateOf(EditorTab.Adjust) }
+    var previousTab by rememberSaveable { mutableStateOf(EditorTab.Adjust) }
     var showAllShootControls by rememberSaveable { mutableStateOf(false) }
+    // 三级菜单的开合状态（一级整体折叠、二级当前展开项、每个一级上次用的二级）。
+    val menu = rememberMenuBoardState()
     LaunchedEffect(homeStandEditRequest) {
-        if(homeStandEditRequest>0){selectedTab=EditorTab.Develop;showAllShootControls=false}
+        if(homeStandEditRequest>0){selectedTab=EditorTab.Adjust;showAllShootControls=false}
     }
-    var galleryReturnTab by rememberSaveable { mutableStateOf(EditorTab.Develop) }
+    var galleryReturnTab by rememberSaveable { mutableStateOf(EditorTab.Adjust) }
     var exportHelpVisible by remember { mutableStateOf(false) }
     var paramHelpVisible by rememberSaveable { mutableStateOf(false) }
     var paramMenuVisible by rememberSaveable { mutableStateOf(false) }
-    var adjustmentFullscreen by rememberSaveable { mutableStateOf(false) }
     val editorLayoutStates = rememberSaveableStateHolder()
     val fullParameters = selectedTab !in setOf(EditorTab.Export, EditorTab.Gallery)
     val panelStates = rememberSaveableStateHolder()
-    BackHandler(enabled = adjustmentFullscreen || aboutVisible || paramHelpVisible || vm.isCropping || vm.detail.opened || selectedTab in setOf(EditorTab.Export, EditorTab.Gallery) || fullParameters) {
+    // 工作台组（照片条 + 胶片 / 相纸栏）的弹出状态：控制条上的按钮切换，
+    // 闲置到设置里的秒数自动收起，碰到工作台就重置计时（设置里可关自动隐藏）。
+    var workbenchOpen by rememberSaveable { mutableStateOf(true) }
+    var workbenchActivity by remember { mutableStateOf(0) }
+    LaunchedEffect(workbenchOpen, workbenchActivity,
+        com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide,
+        com.spektralab.android.ui.components.UiPrefs.workbenchHideSeconds) {
+        if (workbenchOpen && com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide) {
+            delay(com.spektralab.android.ui.components.UiPrefs.workbenchHideSeconds * 1000L)
+            workbenchOpen = false
+        }
+    }
+    BackHandler(enabled = aboutVisible || paramHelpVisible || vm.isCropping || vm.detail.opened || selectedTab in setOf(EditorTab.Export, EditorTab.Gallery) || fullParameters) {
         when {
             vm.detail.opened -> vm.closeFullDetail()
-            adjustmentFullscreen -> adjustmentFullscreen = false
             aboutVisible -> aboutVisible = false
             paramHelpVisible -> paramHelpVisible = false
             vm.isCropping -> vm.cancelCrop()
@@ -152,10 +155,16 @@ internal fun EditorScreen(
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     fun selectEditorTab(tab: EditorTab) {
+        // 再点一次当前一级页签：参数弹着就整体折叠，折叠着就直接打开上次那个参数菜单。
+        if (tab == selectedTab && EditorMenu.isMenuTab(tab)) {
+            menu.retapTab(tab)
+            return
+        }
         if (tab == EditorTab.Gallery) {
             if (selectedTab != EditorTab.Gallery) galleryReturnTab = selectedTab
         } else if (tab != EditorTab.Export) {
             previousTab = tab
+            if (EditorMenu.isMenuTab(tab)) menu.openTab(tab)
         }
         selectedTab = tab
     }
@@ -169,16 +178,7 @@ internal fun EditorScreen(
     Box(Modifier.fillMaxSize()) {
         // A phone held sideways is wide but too short for all five rail destinations.
         val expanded = windowLayout.expanded
-        if (adjustmentFullscreen) {
-            AdjustmentFullscreen(
-                mode = selectedTab.label,
-                fileName = vm.photoInfo.firstOrNull { it.first == "文件名" }?.second ?: "当前照片",
-                comparing = comparing, canCompare = vm.sourceBitmap != null && vm.rendered != null,
-                onCompare = { comparing = !comparing }, onClose = { adjustmentFullscreen = false },
-            ) { previewModifier ->
-                PhotoCanvas(vm, comparing, onImport = {}, modifier = previewModifier)
-            }
-        } else editorLayoutStates.SaveableStateProvider("editor") {
+        editorLayoutStates.SaveableStateProvider("editor") {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = if (selectedTab == EditorTab.Gallery) androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)
@@ -187,23 +187,34 @@ internal fun EditorScreen(
                 if (!vm.isCropping && selectedTab != EditorTab.Gallery) Column {
                     // 顶栏不再有「●●●」下拉菜单：裁剪/重置/编辑配方/复制配方都挪到参数行的控制条里。
                     DarkroomTopBar(
-                        title = when { selectedTab == EditorTab.Export -> "导出照片"
-                            selectedTab == EditorTab.Grade -> "二级调色"
+                        // 顶栏跟着菜单走：折叠时只显示一级，展开二级时写成「调参 · 测光曝光」。
+                        title = when {
+                            selectedTab == EditorTab.Export -> "导出照片"
+                            EditorMenu.isMenuTab(selectedTab) && !menu.collapsed ->
+                                menu.currentSection(selectedTab, vm)?.chip
+                                    ?.let { "${selectedTab.label} · $it" } ?: selectedTab.label
+                            EditorMenu.isMenuTab(selectedTab) -> selectedTab.label
                             fullParameters -> "胶片暗房"
-                            else -> vm.photoInfo.firstOrNull { it.first == "文件名" }?.second ?: "Theia" },
+                            else -> vm.photoInfo.firstOrNull { it.first == "文件名" }?.second ?: "Theia"
+                        },
                         parameterView = fullParameters, exportView = selectedTab == EditorTab.Export,
                         enabled = !vm.busy && !vm.isExporting && !vm.isBatchExporting,
                         onBack = { when { selectedTab == EditorTab.Export -> selectedTab = previousTab
                             fullParameters -> onBackHome()
                             else -> onBackHome() } },
-                        onHelp = { if (selectedTab == EditorTab.Export) exportHelpVisible = true else paramMenuVisible = true },
+                        onHelp = { if (selectedTab == EditorTab.Export) exportHelpVisible = true
+                            else paramHelpVisible = true },
+                        // 齿轮菜单与首页一致：中断的任务 / 设置 / 关于 / 参数说明。
+                        onOpenTasks = { paramMenuVisible = false; onOpenTasks() },
+                        onOpenSettings = { paramMenuVisible = true },
+                        onOpenAbout = { aboutVisible = true },
                     )
                 }
             },
             bottomBar = {
                 if (!keyboardVisible && !expanded && !vm.isCropping && selectedTab != EditorTab.Gallery && selectedTab != EditorTab.Export) {
                     EditorNavigationBar(selectedTab, !vm.busy && !vm.isExporting && !vm.isBatchExporting,
-                        ::selectEditorTab, onCapture = onOpenCamera)
+                        ::selectEditorTab, onRetap = ::selectEditorTab)
                 }
             }
         ) { contentPadding ->
@@ -239,7 +250,7 @@ internal fun EditorScreen(
                             onEditPhoto = { uri ->
                                 val index = vm.photos.indexOf(uri)
                                 if (index >= 0) vm.selectPhoto(index) else vm.addPhotos(listOf(uri), openSelected = true)
-                                selectedTab = EditorTab.Develop
+                                selectedTab = EditorTab.Adjust
                                 showAllShootControls = false
                             },
                             modifier = Modifier.fillMaxSize(),
@@ -247,8 +258,8 @@ internal fun EditorScreen(
                         )
                     }
                     expanded -> Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        EditorNavigationRail(destination, ::selectEditorTab, onExport = { openExportMenu() },
-                            onCapture = onOpenCamera)
+                        EditorNavigationRail(destination, ::selectEditorTab, onRetap = ::selectEditorTab,
+                            onExport = { openExportMenu() }, onCapture = onOpenCamera)
                         Column(Modifier.weight(1f).fillMaxHeight()) {
                             if (!keyboardVisible && destination != EditorTab.Export && vm.photos.isNotEmpty()) EditorPhotoStrip(
                                 vm = vm,
@@ -259,14 +270,15 @@ internal fun EditorScreen(
                                 onSmartDevelop = { smartDevelopVisible = true },
                             )
                             PhotoCanvas(vm, comparing, onImport = { pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                                modifier = Modifier.weight(1f).fillMaxWidth())
+                                modifier = Modifier.weight(1f).fillMaxWidth(), zoomable = true)
                         }
                         Column(Modifier.width(parameterWidth).fillMaxHeight()) {
                             if (!keyboardVisible) {
                                 PhotoMetadataStrip(vm)
                                 EditorStockSelection(vm, onOpenFilmStocks, onOpenPaperStocks)
                             }
-                            EditorPanel(vm, destination, Modifier.weight(1f).fillMaxWidth(), panelStates, onSaveRecipe = { showSaveRecipeDialog = true })
+                            EditorPanel(vm, destination, Modifier.weight(1f).fillMaxWidth(), panelStates,
+                                menu = menu, onSaveRecipe = { showSaveRecipeDialog = true })
                         }
                     }
                     landscape -> Row(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -280,14 +292,14 @@ internal fun EditorScreen(
                                 onSmartDevelop = { smartDevelopVisible = true },
                             )
                             PhotoCanvas(vm, comparing, onImport = { pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                                modifier = Modifier.weight(1f).fillMaxWidth())
+                                modifier = Modifier.weight(1f).fillMaxWidth(), zoomable = true)
                         }
                         Column(Modifier.weight(1f).fillMaxHeight()) {
                             if (!keyboardVisible && destination != EditorTab.Grade) {
                                 EditorStockSelection(vm, onOpenFilmStocks, onOpenPaperStocks)
                             }
                             EditorPanel(vm, destination, Modifier.weight(1f).fillMaxWidth(), panelStates,
-                                showHeader = false, onSaveRecipe = { showSaveRecipeDialog = true })
+                                showHeader = false, menu = menu, onSaveRecipe = { showSaveRecipeDialog = true })
                         }
                     }
                     else -> Column(Modifier.fillMaxSize()) {
@@ -296,8 +308,7 @@ internal fun EditorScreen(
                         fileName = vm.photoInfo.firstOrNull { it.first == "文件名" }?.second ?: "当前照片",
                         comparing = comparing, canCompare = vm.sourceBitmap != null && vm.rendered != null,
                         onCompare = { comparing = !comparing },
-                        onFullScreen = { adjustmentFullscreen = true },
-                        onDone = { selectedTab = EditorTab.Develop; showAllShootControls = false },
+                        onDone = { selectedTab = EditorTab.Adjust; showAllShootControls = false },
                         onExport = { openExportMenu() },
                         onReset = vm::resetAll, canReset = vm.hasPhoto,
                         onCrop = { vm.beginCrop() }, canCrop = vm.hasPhoto && (!vm.params.overscanActive || vm.params.filmOff),
@@ -307,30 +318,49 @@ internal fun EditorScreen(
                         onEditRecipe = { editToolsMode = "presets" },
                         onCopyRecipe = { editToolsMode = "copy" },
                         canTransfer = vm.canTransferEdits,
+                        workbenchOpen = workbenchOpen,
+                        onWorkbenchToggle = { workbenchOpen = !workbenchOpen; workbenchActivity++ },
+                        onCapture = onOpenCamera,
                         modifier = Modifier.weight(1f),
                         preview = { previewModifier ->
                             PhotoCanvas(vm, comparing,
                                 onImport = { pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                                modifier = previewModifier)
+                                modifier = previewModifier, zoomable = true)
                         },
-                    ) {
-                        panelStates.SaveableStateProvider(destination) {
-                            ParameterStockCaption(vm, onOpenFilmStocks)
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
-                                EditorParameterContent(vm, destination)
-                                Spacer(Modifier.height(8.dp))
+                        // 工作台组：照片条在上、胶片 / 相纸栏在下，整组由控制条上的工作台按钮弹出 / 收起。
+                        persistentControls = {
+                            if (EditorMenu.isMenuTab(destination) && !keyboardVisible) Column(
+                                Modifier.fillMaxWidth().pointerInput(Unit) {
+                                    // 碰到工作台就算有活动，重置自动隐藏计时。
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent(PointerEventPass.Initial)
+                                            workbenchActivity++
+                                        }
+                                    }
+                                }) {
+                                if (vm.photos.isNotEmpty()) EditorPhotoStrip(
+                                    vm = vm,
+                                    onAddPhotos = {
+                                        addToStage = true
+                                        pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    },
+                                    onSmartDevelop = { smartDevelopVisible = true },
+                                    allowCollapse = false,
+                                )
+                                EditorStockSelection(vm, onOpenFilmStocks, onOpenPaperStocks)
                             }
-                        }
-                    }
-                        // 照片条（收起把手 + 展开列表）整体放在导出控制条下方。
-                        if (!keyboardVisible && destination != EditorTab.Export && vm.photos.isNotEmpty()) EditorPhotoStrip(
-                            vm = vm,
-                            onAddPhotos = {
-                                addToStage = true
-                                pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            },
-                            onSmartDevelop = { smartDevelopVisible = true },
-                        )
+                        },
+                        // 一级 = 底栏页签，二级 = 药丸行，三级 = 点开药丸后的参数。
+                        menuBoard = {
+                            if (EditorMenu.isMenuTab(destination)) {
+                                panelStates.SaveableStateProvider(destination) {
+                                    PhoneMenuBoard(vm, destination, menu, Modifier.fillMaxWidth())
+                                }
+                            }
+                        },
+                    )
+                        // 照片条已挪进工作台组（照片条在上、胶片 / 相纸栏在下），这里不再单独摆。
                     }
                 }
                 }
@@ -351,8 +381,10 @@ internal fun EditorScreen(
         }
 
         if (paramMenuVisible) {
-            ParamAndSettingsSheet(
-                onOpenHelp = { paramMenuVisible = false; paramHelpVisible = true },
+            // 齿轮里显示的就是首页那一份设置（同一个 SettingsBody），不再是单独一套选项。
+            EditorSettingsSheet(
+                controller = settingsController,
+                vm = vm,
                 onDismiss = { paramMenuVisible = false },
             )
         }
@@ -405,13 +437,13 @@ internal fun EditorScreen(
             confirmButton = { TextButton(onClick = { exportHelpVisible = false }) { Text("关闭") } })
     }
 
-    // ---- 保存配方对话框 ----
+    // ---- 保存方案对话框（导出方案，与「我的配方」不是一回事）----
     if (showSaveRecipeDialog) {
         AlertDialog(
             onDismissRequest = { showSaveRecipeDialog = false },
-            title = { Text("保存配方") },
+            title = { Text("保存方案") },
             text = {
-                OutlinedTextField(value = recipeName, onValueChange = { recipeName = it }, label = { Text("配方名") }, singleLine = true)
+                OutlinedTextField(value = recipeName, onValueChange = { recipeName = it }, label = { Text("方案名") }, singleLine = true)
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -426,65 +458,31 @@ internal fun EditorScreen(
 
 }
 
-/** 编辑页右上角齿轮菜单：参数说明 + 原来首页的 4 项界面设置。 */
+/** 编辑页齿轮里的「设置」：与首页同一份设置正文（SettingsBody），用底部抽屉呈现。
+ *   「参数说明」已提到齿轮菜单那一层，抽屉里不再重复。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ParamAndSettingsSheet(onOpenHelp: () -> Unit, onDismiss: () -> Unit) {
+private fun EditorSettingsSheet(
+    controller: com.spektralab.android.feature.settings.SettingsController,
+    vm: EditorViewModel,
+    onDismiss: () -> Unit,
+) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
-            Text("设置", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-            Spacer(Modifier.height(4.dp))
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onOpenHelp).padding(horizontal = 4.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(androidx.compose.material.icons.Icons.Rounded.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(12.dp))
-                Text("参数说明", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.weight(1f))
-            }
-            HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            com.spektralab.android.ui.components.ToggleRow(
-                label = "折叠菜单互斥",
-                checked = com.spektralab.android.ui.components.UiPrefs.autoCollapseSections,
-                onChecked = { com.spektralab.android.ui.components.UiPrefs.setAutoCollapse(it) },
-            )
-            Text(
-                "开启后，调色/冲印面板里打开一个新的折叠菜单时，会自动收起刚才那个。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(10.dp))
-            com.spektralab.android.ui.components.ToggleRow(
-                label = "显示直方图",
-                checked = com.spektralab.android.ui.components.UiPrefs.showHistogram,
-                onChecked = { com.spektralab.android.ui.components.UiPrefs.updateHistogramVisible(it) },
-            )
-            Text(
-                "关闭后，照片预览左上角不再显示直方图，画面更干净。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(10.dp))
-            com.spektralab.android.ui.components.ToggleRow(
-                label = "工作台自动隐藏",
-                checked = com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide,
-                onChecked = { com.spektralab.android.ui.components.UiPrefs.updateWorkbenchAutoHide(it) },
-            )
-            SliderRow(
-                label = "隐藏等待",
-                value = com.spektralab.android.ui.components.UiPrefs.workbenchHideSeconds.toFloat(),
-                range = 3f..10f,
-                format = "%.0f 秒",
-                resetValue = 3f,
-                enabled = com.spektralab.android.ui.components.UiPrefs.workbenchAutoHide,
-                hint = "左滑更快收起 · 右滑更久才收起（3–10 秒）",
-            ) { com.spektralab.android.ui.components.UiPrefs.updateWorkbenchHideSeconds(it.toInt()) }
-            Text(
-                "开启后，照片工作台闲置到设定秒数会自动收起成「工作台」一条；点一下即可重新展开。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+        ) {
+            Text("设置", style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            com.spektralab.android.feature.settings.SettingsBody(
+                controller,
+                workspace = com.spektralab.android.data.diagnostics.DiagnosticReport.Workspace(
+                    photos = vm.photos.size, hasPhoto = vm.hasPhoto, raw = vm.currentIsRaw,
+                    previewWidth = vm.lastResult?.width ?: 0, previewHeight = vm.lastResult?.height ?: 0,
+                    exporting = vm.isExporting || vm.isBatchExporting,
+                ),
+                onOpenHelp = null,
             )
             Spacer(Modifier.height(16.dp))
         }

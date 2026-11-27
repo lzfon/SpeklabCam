@@ -26,6 +26,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.animation.AnimatedVisibility
+import com.spektralab.android.feature.editor.ui.MenuEnter
+import com.spektralab.android.feature.editor.ui.MenuExit
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,19 +68,24 @@ private class CurveBinding(val vm: EditorViewModel, val decode: Boolean) {
     fun finish(cancel: Boolean = false) { if (decode) vm.finishSceneCurveEdit(cancel) else vm.finishCurveEdit(cancel) }
 }
 
+/**
+ * 曲线：不再跳独立页面。点「编辑曲线」在原位展开，再点收回；
+ * 上面的预览实时跟着走，撤销 / 重做用控制条那一排。
+ * decode=false 调成片曲线（调色 · 影调里），decode=true 调胶片前曲线（调参里）。
+ */
 @Composable
 internal fun CurveEditor(vm: EditorViewModel, decode: Boolean = false) {
     val target = remember(vm, decode) { CurveBinding(vm, decode) }
     var opened by rememberSaveable(vm.currentUri, decode) { mutableStateOf(false) }
-    var photoOnly by rememberSaveable(vm.currentUri, decode) { mutableStateOf(false) }
-    val savedState = rememberSaveableStateHolder()
     val toolState = rememberSaveableStateHolder()
     val enabled = (!decode || !vm.params.filmOff) && vm.hasPhoto && !vm.busy && !vm.isCropping && !vm.isExporting && !vm.isBatchExporting
     val entryTitle = if (decode) "胶片前曲线" else stringResource(R.string.curve_title)
+    val action = if (decode) "胶片前曲线" else "曲线"
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(entryTitle, style = MaterialTheme.typography.titleSmall)
+                // 标题与其它参数标题同档字号（bodyMedium），不再另起一套字体。
+                Text(entryTitle, style = MaterialTheme.typography.bodyMedium)
                 Text(if (decode) {
                         if (target.unsupported != null) "来自更高版本，暂不支持编辑"
                         else if (target.curves.isDefault) "未调整 · 作用于胶片模拟之前" else "已调整 · 曝光域场景曲线"
@@ -86,82 +94,24 @@ internal fun CurveEditor(vm: EditorViewModel, decode: Boolean = false) {
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp))
             }
-            OutlinedButton(onClick = { photoOnly = false; opened = true }, enabled = enabled, shape = TheiaShapes.control,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text(if (decode) "编辑胶片前曲线" else stringResource(R.string.curve_edit)) }
+            OutlinedButton(onClick = { opened = !opened }, enabled = enabled, shape = TheiaShapes.control,
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (opened) "收回$action" else "编辑$action", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .65f))
-    }
-    if (opened) {
-        val close = { target.finish(cancel = true); photoOnly = false; opened = false }
-        // A full-window dialog must reserve its own navigation area even when the
-        // parent editor has already consumed those insets.
-        val navigationSpace = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().coerceAtLeast(24.dp)
-        Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.fillMaxSize().statusBarsPadding().padding(bottom = navigationSpace)) {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = close) { Icon(Icons.Rounded.Close, stringResource(R.string.curve_close)) }
-                        Text(entryTitle, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                        IconButton(onClick = { target.finish(); vm.undo() }, enabled = enabled && vm.canUndo) {
-                            Icon(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.curve_undo))
-                        }
-                        IconButton(onClick = { target.finish(); vm.redo() }, enabled = enabled && vm.canRedo) {
-                            Icon(Icons.AutoMirrored.Rounded.Redo, stringResource(R.string.curve_redo))
-                        }
-                        IconButton(onClick = { target.finish(cancel = true); photoOnly = !photoOnly }) {
-                            Icon(if (photoOnly) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
-                                stringResource(if (photoOnly) R.string.curve_restore_tools else R.string.curve_expand_photo))
-                        }
-                        TextButton(onClick = close) { Text(stringResource(R.string.curve_done)) }
-                    }
-                    HorizontalDivider()
-                    savedState.SaveableStateProvider(if (decode) "scene-curve-workspace" else "curve-workspace") {
-                        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                            val workspaceWidth = maxWidth
-                            val workspaceHeight = maxHeight
-                            if (photoOnly) {
-                                CurvePhotoPreview(vm, Modifier.fillMaxSize().padding(8.dp))
-                            } else if (workspaceWidth >= 840.dp || workspaceWidth > workspaceHeight) {
-                                Row(Modifier.fillMaxSize()) {
-                                    CurvePhotoPreview(vm, Modifier.weight(1f).fillMaxHeight().padding(8.dp))
-                                    Surface(Modifier.width((workspaceWidth * .38f).coerceIn(300.dp, 380.dp)).fillMaxHeight(),
-                                        color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                                        toolState.SaveableStateProvider("tools") {
-                                            CurveControls(vm, target, (workspaceHeight - 132.dp).coerceIn(132.dp, 280.dp),
-                                                Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp))
-                                        }
-                                    }
-                                }
-                            } else {
-                                val panelHeight = (workspaceHeight * .43f).coerceIn(284.dp, 360.dp)
-                                Column(Modifier.fillMaxSize()) {
-                                    CurvePhotoPreview(vm, Modifier.weight(1f).fillMaxWidth().padding(8.dp))
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
-                                    Surface(Modifier.height(panelHeight).fillMaxWidth(),
-                                        color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                                        toolState.SaveableStateProvider("tools") {
-                                            CurveControls(vm, target, (panelHeight - 136.dp).coerceIn(144.dp, 224.dp),
-                                                Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        // 就地弹出：动画与二 / 三级同一节拍，收回即撤销未提交的拖拽（CurveControls 自带）。
+        AnimatedVisibility(visible = opened, enter = MenuEnter, exit = MenuExit, label = "curve-inline-pop") {
+            toolState.SaveableStateProvider(if (decode) "scene-curve-inline" else "curve-inline") {
+                Surface(Modifier.fillMaxWidth().clip(TheiaShapes.panel),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    CurveControls(vm, target, 216.dp, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                 }
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .65f))
     }
 }
 
-@Composable
-private fun CurvePhotoPreview(vm: EditorViewModel, modifier: Modifier) {
-    Box(modifier.clip(TheiaShapes.panel)) {
-        PhotoCanvas(vm, comparing = false, onImport = {}, modifier = Modifier.fillMaxSize(),
-            showHistogram = false, backgroundColor = MaterialTheme.colorScheme.background)
-    }
-}
 
 @Composable
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
@@ -251,7 +201,7 @@ private fun CurveControls(vm: EditorViewModel, target: CurveBinding, graphHeight
                         containerColor = if (channelIndex == index) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent),
                     shape = TheiaShapes.control,
                     contentPadding = PaddingValues(horizontal = 4.dp),
-                ) { Text(label, maxLines = 1) }
+                ) { Text(label, maxLines = 1, style = MaterialTheme.typography.bodyMedium) }
             }
         }
         if (!precision) {
@@ -477,7 +427,7 @@ private fun CurveControls(vm: EditorViewModel, target: CurveBinding, graphHeight
                     Icon(Icons.Rounded.ChevronLeft, previousLabel)
                 }
                 Text(stringResource(R.string.curve_point, pointIndex + 1, curve.points.size),
-                    Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+                    Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 IconButton(onClick = { selected = (pointIndex + 1).coerceAtMost(curve.points.lastIndex) }, enabled = enabled && pointIndex < curve.points.lastIndex) {
                     Icon(Icons.Rounded.ChevronRight, nextLabel)
                 }
@@ -569,7 +519,7 @@ private fun CurveValueSlider(
     }
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(label, style = MaterialTheme.typography.bodyMedium)
             Text(
                 if (decode) "%+.1f EV".format(value * 16 - 8) else "${(value*255+.5f).toInt()}",
                 style = MaterialTheme.typography.labelMedium,

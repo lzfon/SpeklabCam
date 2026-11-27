@@ -1,22 +1,19 @@
 package com.spektralab.android.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -29,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spektralab.android.R
 import com.spektralab.android.ui.theme.TheiaShapes
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
 
 internal object DarkroomChrome {
     val navigation = Color(0xFF222222)
@@ -43,7 +43,11 @@ internal fun DarkroomTopBar(
     enabled: Boolean,
     onBack: () -> Unit,
     onHelp: () -> Unit,
+    onOpenTasks: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
+    onOpenAbout: (() -> Unit)? = null,
 ) {
+    var gearMenuOpen by remember { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.background) {
         // 编辑页顶栏（含「胶片暗房」参数态与普通编辑态）只占原来一半高，字号/图标同步缩，保证不出栏。
         // 导出页和胶片暗房共用一套栏高与字号（26dp 紧凑栏），不再单独放大。
@@ -71,11 +75,24 @@ internal fun DarkroomTopBar(
             }
             when {
                 exportView -> TextButton(onClick = onHelp, enabled = enabled, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("帮助", fontSize = 11.sp) }
-                // 冲印 / 调色：右上角齿轮（与首页同一图标），点开「参数说明 + 显示/工作台设置」。
-                parameterView -> IconButton(onClick = onHelp, enabled = enabled,
-                    modifier = Modifier.size(buttonSize).semantics { contentDescription = "参数说明与设置" }) {
-                    Icon(Icons.Rounded.Settings, null, Modifier.size(iconSize + 2.dp),
-                        tint = MaterialTheme.colorScheme.primary)
+                // 冲印 / 调色：右上角齿轮点开与首页同一层级的菜单
+                // ——中断的任务 / 设置 / 关于 / 参数说明（参数说明从设置抽屉里提到这一层）。
+                parameterView -> Box {
+                    IconButton(onClick = { gearMenuOpen = true }, enabled = enabled,
+                        modifier = Modifier.size(buttonSize).semantics { contentDescription = "菜单" }) {
+                        Icon(Icons.Rounded.Settings, null, Modifier.size(iconSize + 2.dp),
+                            tint = MaterialTheme.colorScheme.primary)
+                    }
+                    DropdownMenu(expanded = gearMenuOpen, onDismissRequest = { gearMenuOpen = false }) {
+                        if (onOpenTasks != null) DropdownMenuItem(text = { Text("中断的任务") },
+                            onClick = { gearMenuOpen = false; onOpenTasks() })
+                        if (onOpenSettings != null) DropdownMenuItem(text = { Text("设置") },
+                            onClick = { gearMenuOpen = false; onOpenSettings() })
+                        if (onOpenAbout != null) DropdownMenuItem(text = { Text("关于") },
+                            onClick = { gearMenuOpen = false; onOpenAbout() })
+                        DropdownMenuItem(text = { Text("参数说明") },
+                            onClick = { gearMenuOpen = false; onHelp() })
+                    }
                 }
                 // 撤销 / 重做 / 前后对比已整体移除（撤销重做在参数行控制条里，前后对比在预览右上角）。
                 else -> Spacer(Modifier.width(8.dp))

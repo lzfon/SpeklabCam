@@ -27,7 +27,7 @@ import com.spektralab.android.core.color.ColorAdjustments
 import com.spektralab.android.core.color.HslBand
 import com.spektralab.android.core.color.HslColor
 import com.spektralab.android.feature.editor.EditorViewModel
-import com.spektralab.android.ui.components.EditorSection
+import com.spektralab.android.ui.components.MenuBody
 import com.spektralab.android.ui.theme.TheiaShapes
 import kotlin.math.roundToInt
 
@@ -37,7 +37,7 @@ private val swatches = listOf(
 )
 
 @Composable
-internal fun ColorEditor(vm: EditorViewModel) {
+internal fun ColorEditor(vm: EditorViewModel, embedded: Boolean = false) {
     var index by rememberSaveable { mutableIntStateOf(0) }
     val color = HslColor.entries[index]
     val colors = vm.params.colorAdjustments
@@ -54,7 +54,7 @@ internal fun ColorEditor(vm: EditorViewModel) {
         vm.finishColorEdit()
     }
 
-    EditorSection(stringResource(R.string.color_title), stringResource(R.string.color_summary)) {
+    MenuBody(embedded, stringResource(R.string.color_title), stringResource(R.string.color_summary)) {
         if (vm.params.unreadableColorAdjustments != null) {
             Text(stringResource(R.string.color_unsupported), style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { apply(ColorAdjustments.NEUTRAL) }, enabled = enabled) {

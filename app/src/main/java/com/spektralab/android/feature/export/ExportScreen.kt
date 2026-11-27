@@ -138,9 +138,9 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
                 }
             }
             val currentRecipe = vm.recipes.firstOrNull { it.format == vm.exportFormat && it.res == vm.exportRes && it.colorSpace == vm.exportColorSpace && it.jpegQuality == vm.jpegQuality && it.keepCapture == vm.exportKeepCapture && it.keepLocation == vm.exportKeepLocation && it.tiffDeflate == vm.exportTiffDeflate && it.customSize == vm.exportCustomSize }
-            ExportSectionRow("导出配方", currentRecipe?.name ?: "自定义", recipeOpen, !processing) { recipeOpen = !recipeOpen }
+            ExportSectionRow("导出方案", currentRecipe?.name ?: "自定义", recipeOpen, !processing) { recipeOpen = !recipeOpen }
             if (recipeOpen) {
-                ExportSettingRow("当前配方", currentRecipe?.name ?: "自定义", vm.recipes.map { it.name }, !processing) { name ->
+                ExportSettingRow("当前方案", currentRecipe?.name ?: "自定义", vm.recipes.map { it.name }, !processing) { name ->
                     vm.recipes.firstOrNull { it.name == name }?.let { vm.applyRecipe(it) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -157,7 +157,7 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
                     ) {
                         Icon(Icons.Rounded.SaveAlt, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("保存配方", fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("保存方案", fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     FilledTonalButton(
                         onClick = onCopySettings,
@@ -179,7 +179,7 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                 TextButton(onClick = { recipeManager = true }, enabled = !processing,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-                    Text("管理配方（重命名 / 删除）", fontSize = 12.sp)
+                    Text("管理方案（重命名 / 删除）", fontSize = 12.sp)
                 }
             }
 
@@ -206,7 +206,7 @@ internal fun ExportScreen(vm: EditorViewModel, modifier: Modifier = Modifier, on
                     .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("保存位置", modifier = Modifier.padding(end = 16.dp), fontSize = 12.sp, lineHeight = 16.sp,
                         color = MaterialTheme.colorScheme.onSurface)
-                    Text(dirName ?: "相册 / Pictures/spektralab", modifier = Modifier.weight(1f), fontSize = 12.sp,
+                    Text(dirName ?: "相册 / Pictures/Speklab", modifier = Modifier.weight(1f), fontSize = 12.sp,
                         lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End)
                     Icon(Icons.Rounded.ChevronRight, null, modifier = Modifier.padding(start = 6.dp).size(16.dp),
@@ -316,9 +316,9 @@ private fun RecipeManagerDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
     var renaming by remember { mutableStateOf<ExportRecipe?>(null) }
     var deleting by remember { mutableStateOf<ExportRecipe?>(null) }
     var name by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("导出配方") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("导出方案") }, text = {
         Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-            if (vm.recipes.isEmpty()) Text("还没有任何配方，先在导出页保存一条。",
+            if (vm.recipes.isEmpty()) Text("还没有任何方案，先在导出页保存一条。",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             vm.recipes.forEach { recipe ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -343,9 +343,9 @@ private fun RecipeManagerDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
     })
 
     renaming?.let { target ->
-        AlertDialog(onDismissRequest = { renaming = null }, title = { Text("重命名配方") }, text = {
+        AlertDialog(onDismissRequest = { renaming = null }, title = { Text("重命名方案") }, text = {
             OutlinedTextField(name, { name = it.take(60) }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(), label = { Text("配方名") })
+                modifier = Modifier.fillMaxWidth(), label = { Text("方案名") })
         }, confirmButton = {
             TextButton(enabled = name.isNotBlank(), onClick = {
                 if (vm.renameRecipe(target, name)) renaming = null
@@ -354,8 +354,8 @@ private fun RecipeManagerDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
     }
 
     deleting?.let { target ->
-        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除配方") },
-            text = { Text("确定删除「${target.name}」？只删这条配方，导出设置和照片都不受影响。") },
+        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除方案") },
+            text = { Text("确定删除「${target.name}」？只删这个方案，导出设置和照片都不受影响。") },
             confirmButton = {
                 TextButton(onClick = { vm.deleteRecipe(target); deleting = null }) { Text("删除") }
             }, dismissButton = { TextButton(onClick = { deleting = null }) { Text("取消") } })
@@ -418,10 +418,17 @@ private fun NamingDialog(current: ExportNaming, onDismiss: () -> Unit, onApply: 
     val separators = listOf("_" to "下划线 _", "-" to "短横线 -", " " to "空格")
     var selectedTokens by rememberSaveable { mutableStateOf(current.tokens.map { it.name }) }
     var separator by rememberSaveable { mutableStateOf(current.separator) }
-    fun toggled() = ExportNaming(selectedTokens.map { ExportNaming.Token.valueOf(it) }, separator)
+    var prefix by rememberSaveable { mutableStateOf(current.prefix) }
+    fun toggled() = ExportNaming(selectedTokens.map { ExportNaming.Token.valueOf(it) }, separator, prefix.trim())
     AlertDialog(onDismissRequest = onDismiss, title = { Text("文件命名") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // 自定义前缀排在其它选项之前；留空就是不输出前缀。
+                Text("自定义前缀 · 填了才加在文件名最前面，留空不加", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(prefix, { prefix = it.take(40) }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth(), label = { Text("前缀") },
+                    placeholder = { Text("例如 MY、LUOYANG") })
                 Text("选择要写进文件名的内容，按选择的先后顺序拼接：", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 tokenOptions.forEach { (token, label) ->
@@ -442,9 +449,10 @@ private fun NamingDialog(current: ExportNaming, onDismiss: () -> Unit, onApply: 
                     separator = separators.first { s -> s.second == it }.first
                 }
                 TextButton(onClick = {
-                    selectedTokens = emptyList(); separator = "_"
-                }) { Text("恢复默认（原文件名_spektralab）", fontSize = 12.sp) }
-                Text("默认不勾选时，沿用「原文件名_spektralab」。", style = MaterialTheme.typography.bodySmall,
+                    selectedTokens = emptyList(); separator = "_"; prefix = ""
+                }) { Text("恢复默认（原文件名_Speklab）", fontSize = 12.sp) }
+                Text("不勾选任何内容时，文件名是「原文件名_Speklab」；填了前缀就是「前缀_原文件名_Speklab」。",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },

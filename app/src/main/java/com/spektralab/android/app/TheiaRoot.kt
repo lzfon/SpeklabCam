@@ -28,7 +28,7 @@ import com.spektralab.android.feature.about.AboutScreen
 import com.spektralab.android.feature.editor.EditorViewModel
 import com.spektralab.android.feature.editor.ui.EditorScreen
 import com.spektralab.android.feature.export.ExportTasksScreen
-import com.spektralab.android.feature.home.HomeScreen
+import com.spektralab.android.feature.home.HomeShell
 import com.spektralab.android.feature.library.FilmStockScreen
 import com.spektralab.android.feature.lighttable.GalleryScreen
 import com.spektralab.android.feature.lighttable.ViewingStand
@@ -170,15 +170,22 @@ internal fun TheiaRoot(vm: EditorViewModel) {
     Box(Modifier.fillMaxSize()) {
         screenStates.SaveableStateProvider(route) {
           when (route) {
-            AppRoute.Home -> HomeScreen(
+            // 首页：底栏三项 + 左右滑入面板，接线细节见 HomeShell。
+            AppRoute.Home -> HomeShell(
                 vm = vm,
+                canvasState = viewingCanvasState,
                 onImportPhotos = { launchPhotoPicker(add = false) },
                 onAddPhotos = { launchPhotoPicker(add = true) },
+                onPickForViewing = {
+                    withMediaLocation {
+                        homeViewingPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                },
+                onEditFromStand = { homeStandEditRequest++; route = AppRoute.Editor },
                 onOpenCamera = { requestSystemCamera() },
                 onOpenEditor = { route = AppRoute.Editor },
-                onOpenViewingStand = { route = AppRoute.ViewingStand },
                 onOpenAbout = { route = AppRoute.About },
-                onOpenSavedPhotos = { vm.lightTableProjects.refresh(); route = AppRoute.SavedPhotos },
                 onOpenTasks = { route = AppRoute.ExportTasks },
                 onOpenSettings = { route = AppRoute.Settings },
             )
@@ -212,6 +219,8 @@ internal fun TheiaRoot(vm: EditorViewModel) {
                 viewingCanvasState=viewingCanvasState,
                 homeStandEditRequest=homeStandEditRequest,
                 onOpenCamera = { requestSystemCamera() },
+                onOpenTasks = { route = AppRoute.ExportTasks },
+                settingsController = settingsController,
             )
             AppRoute.ViewingStand -> GalleryScreen(
                 vm=vm,
@@ -290,7 +299,10 @@ private suspend fun scanNewShots(context: android.content.Context, afterId: Long
                     val id = cursor.getLong(idColumn)
                     if (id <= afterId) break
                     val path = if (pathColumn >= 0) cursor.getString(pathColumn).orEmpty() else ""
-                    if (path.contains("spektralab") || path.contains("Theia")) continue
+                    // 新目录是 Pictures/Speklab，老目录 Pictures/spektralab 仍要一起排除。
+                    val lower = path.lowercase()
+                    if (lower.contains("spektralab") || lower.contains("speklab") ||
+                        path.contains("Theia")) continue
                     val uri = android.content.ContentUris.withAppendedId(collection, id)
                     if (readableImageHeader(context, uri)) result += uri
                 }

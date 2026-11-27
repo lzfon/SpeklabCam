@@ -2,25 +2,20 @@ package com.spektralab.android.feature.smartdevelop
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FilterVintage
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material.icons.rounded.WbSunny
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
@@ -34,26 +29,8 @@ import androidx.compose.ui.unit.dp
 import com.spektralab.android.core.develop.SmartDevelopStyle
 import com.spektralab.android.feature.editor.EditorViewModel
 import com.spektralab.android.ui.theme.TheiaShapes
-
-@Composable
-internal fun SmartDevelopEntry(vm: EditorViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    val colors=MaterialTheme.colorScheme
-    Row(modifier.fillMaxWidth().clip(TheiaShapes.control).background(colors.surfaceContainerLow)
-        .clickable(role=Role.Button,onClick=onOpen).padding(horizontal=12.dp,vertical=10.dp)
-        .semantics(mergeDescendants=true){contentDescription="选择智能显影风格"},
-        verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(36.dp).background(colors.primaryContainer,TheiaShapes.control),contentAlignment=Alignment.Center){
-            Icon(Icons.Rounded.Palette,null,Modifier.size(21.dp),tint=colors.primary)
-        }
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-            Text("智能配方 · ${vm.smartRecipe?.name ?: vm.smartStyle.title}",style=MaterialTheme.typography.titleSmall)
-            Text(if(vm.smartImportRunning) "准备 ${vm.smartImportCompleted}/${vm.smartImportTotal} 张照片"
-                else if(vm.smartAutoEnabled) "导入后逐张分析，自动选片与调色" else "自动处理已关闭，可手动应用",
-                style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant)
-        }
-        Icon(Icons.Rounded.ChevronRight,null,Modifier.size(20.dp),tint=colors.onSurfaceVariant)
-    }
-}
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

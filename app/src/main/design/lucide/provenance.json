@@ -22,5 +22,167 @@
     "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/columns-2.svg",
     "sha256": "bddf3348a9c82d111a060d118299c90755b1ae8411bd16ea1d5ddb83c5f98a27",
     "resource": "ic_darkroom_columns_2.xml"
+  },
+  {
+    "icon": "sliders-horizontal",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/sliders-horizontal.svg",
+    "sha256": "e43a00e5eb684e6cbb61083bed2528d7a3fa5f265693eb2b5f314cd432aa65f4",
+    "resource": "ic_spk_tab_adjust.xml"
+  },
+  {
+    "icon": "lamp",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/lamp.svg",
+    "sha256": "a677c0a6e1c98857e62ed896367918907e1bdda3bd5306d55211d45f6cf1be6b",
+    "resource": "ic_spk_tab_darkroom.xml"
+  },
+  {
+    "icon": "film",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/film.svg",
+    "sha256": "85cfa80821b34f512bd401a1249957c9f2f612497602ecc31dff39517823ee52",
+    "resource": "ic_spk_menu_film.xml"
+  },
+  {
+    "icon": "ratio",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/ratio.svg",
+    "sha256": "d30cb7b90d5164cfe6b14457cc0e333143a0a1e5ebdc281ba64facaf7eaf3125",
+    "resource": "ic_spk_menu_ratio.xml"
+  },
+  {
+    "icon": "spline",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/spline.svg",
+    "sha256": "995d3e71e8c4ebd6aa42ba70d4360e495d7c2ee192dbb6c4348e2cedc8f669ce",
+    "resource": "ic_spk_menu_curve.xml"
+  },
+  {
+    "icon": "gauge",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/gauge.svg",
+    "sha256": "d7710543a5085c5a61d0bbac1da8b89ef28e541b38ed739357991dff33d475b5",
+    "resource": "ic_spk_menu_meter.xml"
+  },
+  {
+    "icon": "ruler",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/ruler.svg",
+    "sha256": "af9710f70510217ef33773d502d0be2425c3a9cb1e3294ace27da9f0b4c8850b",
+    "resource": "ic_spk_menu_latitude.xml"
+  },
+  {
+    "icon": "thermometer-sun",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/thermometer-sun.svg",
+    "sha256": "e7725bb266a9035a7ccdce41850b518f90f34cbe515e8dbfbcea0ae5ab184567",
+    "resource": "ic_spk_menu_camwb.xml"
+  },
+  {
+    "icon": "frame",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/frame.svg",
+    "sha256": "d00e5a3a53eb36555af8b76cd21e87751f39e4a65f5d440fea88e760e9b65f16",
+    "resource": "ic_spk_menu_frame.xml"
+  },
+  {
+    "icon": "calendar-days",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/calendar-days.svg",
+    "sha256": "9330eb8d7c4989e97b6361314abbf02953243c602874725c9e58ceca00da3bd7",
+    "resource": "ic_spk_menu_date.xml"
+  },
+  {
+    "icon": "aperture",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/aperture.svg",
+    "sha256": "4bf4b9978b6f9eeb4421e70762b1bbc70a98ed5bd92e5382f1cd7f72cb5e2252",
+    "resource": "ic_spk_menu_filter.xml"
+  },
+  {
+    "icon": "projector",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/projector.svg",
+    "sha256": "656b7ea37c25a5b5b4181dd81e95cc04eb4074963e503f4246c5b312d0fc98a0",
+    "resource": "ic_spk_menu_enlarger.xml"
+  },
+  {
+    "icon": "flask-conical",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/flask-conical.svg",
+    "sha256": "a2ce857c159bef4c128a6d9f0b6dcbd6504ecf1a2a670ee220efd14fd032b561",
+    "resource": "ic_spk_menu_emulsion.xml"
+  },
+  {
+    "icon": "contrast",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/contrast.svg",
+    "sha256": "a9f1a6166c479cd3e546625b09686a7e97322c850a9b146f270f912e886c395c",
+    "resource": "ic_spk_menu_tone.xml"
+  },
+  {
+    "icon": "palette",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/palette.svg",
+    "sha256": "8e7d3fde990cffd10469ba351f27c50202b057a9bb9af5626322e53fd3abc78c",
+    "resource": "ic_spk_menu_color.xml"
+  },
+  {
+    "icon": "square-dashed",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/square-dashed.svg",
+    "sha256": "bb7958e30d2658e90c3eaaa01d4808fa7a7427bc1ae1744a0fe016ddda258b2a",
+    "resource": "ic_spk_menu_vignette.xml"
+  },
+  {
+    "icon": "crop",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/crop.svg",
+    "sha256": "9229f7832445ee0caa15eecd6323397a3ebb5c9a124f923212605ad3529d64b8",
+    "resource": "ic_spk_menu_perspective.xml"
+  },
+  {
+    "icon": "sun",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/sun.svg",
+    "sha256": "a3955c8b0425fcc5c9ba12d2bdd77fe53b2cd5dd05e7742a56f342e996fb2ef8",
+    "resource": "ic_spk_menu_wb.xml"
+  },
+  {
+    "icon": "blend",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/blend.svg",
+    "sha256": "cff13925b80ff33a4f9c58114105c7077e2a24bbf1c5b9eb361d7bc706f92240",
+    "resource": "ic_spk_menu_blend.xml"
+  },
+  {
+    "icon": "layers",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/layers.svg",
+    "sha256": "ce16d0a955e3581cda17f6b2fd5c5bc2034b405f9cecc31c8ebb8495b4afc1bb",
+    "resource": "ic_spk_menu_grading.xml"
+  },
+  {
+    "icon": "arrow-left-right",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/arrow-left-right.svg",
+    "sha256": "2d64da427cbb3f14e522658459903829575b09ec15162c1a69ea6ad341a4359a",
+    "resource": "ic_spk_menu_channels.xml"
+  },
+  {
+    "icon": "scale",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/scale.svg",
+    "sha256": "a7faa238b153311b18aaffb14ade8989128eaac35a92482edb7a7ee04c7333de",
+    "resource": "ic_spk_menu_balance.xml"
+  },
+  {
+    "icon": "images",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/images.svg",
+    "sha256": "f853679adfac703296d71cf0a55945af93144927bc50c9ce72eac809300aad8c",
+    "resource": "ic_spk_tab_stand.xml"
+  },
+  {
+    "icon": "list-checks",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/list-checks.svg",
+    "sha256": "08d26ab05aaf724222c4c0cd5a19d5eae753b2a5fff0eb2d81759dde11bac6b6",
+    "resource": "ic_spk_tab_addwork.xml"
+  },
+  {
+    "icon": "gallery-thumbnails",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/gallery-thumbnails.svg",
+    "sha256": "d0987445f1bf8f7a44d7c9af09f31b310e21ea674b7e085fe7aea004662ca442",
+    "resource": "ic_spk_tab_gallery.xml"
+  },
+  {
+    "icon": "clock-3",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/clock-3.svg",
+    "sha256": "0e097d0b66278965fb53bc14900575d95f5c21b9cca932028bbb33294b56c9e2",
+    "resource": "ic_spk_tab_restore.xml"
+  },
+  {
+    "icon": "bookmark-plus",
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bookmark-plus.svg",
+    "sha256": "3c6b08ce8d32ea6c16606f2ce44d9f51d292b179947350a2ae91494a7905281b",
+    "resource": "ic_spk_tab_addwork.xml"
   }
 ]

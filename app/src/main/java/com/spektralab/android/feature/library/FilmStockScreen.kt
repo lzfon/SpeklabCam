@@ -1,11 +1,8 @@
 package com.spektralab.android.feature.library
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -16,24 +13,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Compare
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,8 +34,11 @@ import com.spektralab.android.R
 import com.spektralab.android.engine.Stock
 import com.spektralab.android.engine.StockCatalog
 import com.spektralab.android.feature.editor.EditorViewModel
-import com.spektralab.android.ui.components.BeforeAfterPreview
+import com.spektralab.android.feature.editor.ui.PhotoCanvas
 import com.spektralab.android.ui.theme.TheiaShapes
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 
 /** Photo-first workspace: one live preview and a compact horizontal filter strip. */
 @Composable
@@ -101,62 +94,24 @@ private fun StockPhotoPreview(vm: EditorViewModel, comparing: Boolean, onCompare
     val source = vm.sourceBitmap
     val rendered = vm.rendered
     val canCompare = source != null && rendered != null && vm.hasPhoto
-    val splitComparison = comparing && canCompare
-    val canHold = canCompare && !splitComparison
-    var holding by remember(vm.currentUri, source) { mutableStateOf(false) }
-    val showingOriginal = canHold && holding
-    val photo = if (showingOriginal) source else rendered ?: source
     val previewLabel = stringResource(R.string.stock_photo_preview)
-    val originalLabel = stringResource(R.string.stock_original)
-    val effectLabel = stringResource(R.string.stock_printed)
-    val splitLabel = stringResource(R.string.stock_split_comparison)
-    Box(modifier.padding(horizontal = 12.dp, vertical = 8.dp).semantics {
-        contentDescription = previewLabel
-        stateDescription = when {
-            splitComparison -> splitLabel
-            showingOriginal -> originalLabel
-            else -> effectLabel
-        }
-    }) {
-        if (photo != null) {
-            // Only the photograph owns the hold gesture; sibling controls keep their clicks.
-            Box(Modifier.fillMaxSize().pointerInput(vm.currentUri, source, canHold) {
-                if (canHold) detectTapGestures(onPress = {
-                    holding = true
-                    try {
-                        tryAwaitRelease()
-                    } finally {
-                        holding = false
-                    }
-                })
-            }) {
-                if (splitComparison) {
-                    BeforeAfterPreview(source!!, rendered!!, Modifier.fillMaxSize())
-                } else {
-                    Image(photo.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                }
-            }
-            IconToggleButton(checked = splitComparison, onCheckedChange = onCompare, enabled = canCompare,
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = .9f), TheiaShapes.control)) {
-                Icon(Icons.Rounded.Compare, stringResource(
-                    if (splitComparison) R.string.stock_close_comparison else R.string.stock_compare),
-                    tint = if (splitComparison) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(21.dp))
-            }
-            if (canHold) Text(
-                stringResource(if (showingOriginal) R.string.stock_original_release else R.string.stock_hold_original),
-                Modifier.align(Alignment.BottomStart).padding(10.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = .92f), TheiaShapes.badge)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        } else {
-            Text(stringResource(R.string.stock_preview_empty), Modifier.align(Alignment.Center),
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // 预览窗口直接复用编辑页那一只 PhotoCanvas：显示与功能完全一致
+    // ——按住画面看原图、双指缩放、左上角直方图、前后分割对比都在同一套逻辑里。
+    Box(modifier.padding(horizontal = 12.dp, vertical = 8.dp).semantics { contentDescription = previewLabel }) {
+        PhotoCanvas(
+            vm = vm,
+            comparing = comparing,
+            onImport = {},
+            modifier = Modifier.fillMaxSize(),
+            zoomable = true,
+        )
+        // 与编辑页那颗一致：不带底色，直接叠在画面上。
+        IconToggleButton(checked = comparing, onCheckedChange = onCompare, enabled = canCompare,
+            modifier = Modifier.align(Alignment.TopEnd).size(48.dp)) {
+            Icon(painterResource(R.drawable.ic_darkroom_columns_2), stringResource(
+                if (comparing) R.string.stock_close_comparison else R.string.stock_compare),
+                tint = if (comparing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -194,12 +149,6 @@ private fun StockFilterPanel(vm: EditorViewModel, paperTab: Boolean, onPaperTab:
             Spacer(Modifier.weight(1f))
             Text(if (paperTab) "${papers.size} 款兼容材料" else "${films.size} 款胶片",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // 完成放在这一行最右：13sp 与「胶片库」「相纸」同字号，主题绿，不和数量文字抢位置。
-            TextButton(onClick = onDone, enabled = enabled,
-                modifier = Modifier.heightIn(min = 40.dp).semantics { contentDescription = "应用胶片与相纸" },
-                contentPadding = PaddingValues(start = 14.dp, end = 4.dp)) {
-                Text("完成", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            }
         }
         if (!paperTab) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp).selectableGroup().semantics { contentDescription = "胶片分类" }) {

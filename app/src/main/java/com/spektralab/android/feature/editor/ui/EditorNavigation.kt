@@ -33,35 +33,32 @@ import com.spektralab.android.EditorTab
 import com.spektralab.android.R
 import com.spektralab.android.ui.components.DarkroomChrome
 
-/** 底栏页签：冲印 / 调色 / 观片台（导出走控制条，不进底栏）。 */
-private val barTabs: List<EditorTab> = EditorTab.entries.filter { it != EditorTab.Export }
-
-/** 底栏顺序：冲印 · 调色 · 拍摄 · 观片台。拍摄是一次性动作，不是页面。 */
-private const val CAPTURE_INDEX = 2
+/**
+ * 底栏页签：调参 / 暗房 / 调色。
+ * 拍摄已按第三轮要求挪到控制条（扳手右侧，只留图标）；导出走控制条，观片台入口在首页。
+ */
+private val barTabs: List<EditorTab> =
+    EditorTab.entries.filter { it != EditorTab.Export && it != EditorTab.Gallery }
 
 @Composable
 internal fun EditorNavigationBar(
     selected: EditorTab,
     enabled: Boolean,
     onSelect: (EditorTab) -> Unit,
-    onCapture: () -> Unit = {},
+    onRetap: (EditorTab) -> Unit = onSelect,
 ) {
-    // 与 DarkroomBottomBar 同一套尺寸与配色，四个格子等宽等距。
-    val selectedIndex = barTabs.indexOf(selected).let { if (it < 0) 0 else it + if (it >= CAPTURE_INDEX) 1 else 0 }
+    // 与 DarkroomBottomBar 同一套尺寸与配色，三个格子等宽等距。
+    val selectedIndex = barTabs.indexOf(selected).coerceAtLeast(0)
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f), thickness = .5.dp)
         Row(Modifier.fillMaxWidth().height(64.dp).background(DarkroomChrome.navigation).selectableGroup()) {
-            fun slot(index: Int): Modifier = Modifier.weight(1f).fillMaxHeight()
-            // 冲印、调色
-            barTabs.take(CAPTURE_INDEX).forEachIndexed { i, tab ->
-                BottomSlot(slot(i), tab.label, tab.icon, selectedIndex == i, enabled, onClick = { onSelect(tab) })
-            }
-            // 拍摄（动作）
-            BottomSlot(slot(CAPTURE_INDEX), "拍摄", R.drawable.ic_spk_tab_capture, false, enabled, onClick = onCapture)
-            // 观片台
-            barTabs.drop(CAPTURE_INDEX).forEachIndexed { i, tab ->
-                val position = CAPTURE_INDEX + 1 + i
-                BottomSlot(slot(position), tab.label, tab.icon, selectedIndex == position, enabled, onClick = { onSelect(tab) })
+            // 点已经停着的那个一级页签 = 整体折叠 / 直接打开上次的参数菜单，交给 onRetap。
+            barTabs.forEachIndexed { i, tab ->
+                BottomSlot(
+                    Modifier.weight(1f).fillMaxHeight(), tab.label, tab.icon,
+                    selectedIndex == i, enabled,
+                    onClick = { if (selectedIndex == i) onRetap(tab) else onSelect(tab) },
+                )
             }
         }
     }
@@ -95,13 +92,12 @@ private fun BottomSlot(
 internal fun EditorNavigationRail(
     selected: EditorTab,
     onSelect: (EditorTab) -> Unit,
+    onRetap: (EditorTab) -> Unit = onSelect,
     onExport: () -> Unit = {},
     onCapture: () -> Unit = {},
 ) {
     NavigationRail(containerColor = MaterialTheme.colorScheme.surface) {
-        barTabs.take(CAPTURE_INDEX).forEach { tab ->
-            railItem(tab, selected, onSelect)
-        }
+        // 拍摄入口留在侧栏最上面：平板 / 横屏没有控制条那一行。
         NavigationRailItem(
             selected = false,
             onClick = onCapture,
@@ -116,8 +112,8 @@ internal fun EditorNavigationRail(
                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
-        barTabs.drop(CAPTURE_INDEX).forEach { tab ->
-            railItem(tab, selected, onSelect)
+        barTabs.forEach { tab ->
+            railItem(tab, selected, onSelect, onRetap)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f))
         NavigationRailItem(
@@ -138,10 +134,11 @@ internal fun EditorNavigationRail(
 }
 
 @Composable
-private fun railItem(tab: EditorTab, selected: EditorTab, onSelect: (EditorTab) -> Unit) {
+private fun railItem(tab: EditorTab, selected: EditorTab, onSelect: (EditorTab) -> Unit, onRetap: (EditorTab) -> Unit) {
+    val active = selected == tab
     NavigationRailItem(
-        selected = selected == tab,
-        onClick = { onSelect(tab) },
+        selected = active,
+        onClick = { if (active) onRetap(tab) else onSelect(tab) },
         icon = { Icon(painterResource(tab.icon), contentDescription = null) },
         label = { Text(tab.label) },
         alwaysShowLabel = true,

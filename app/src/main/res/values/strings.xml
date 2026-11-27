@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SpekLab相机</string>
+    <string name="app_name">SpeklabCam</string>
     <string name="curve_title">曲线</string>
     <string name="curve_summary">明暗与分通道 · 冲印后的精细调整</string>
     <string name="curve_rgb">RGB</string>
@@ -12,17 +12,10 @@
     <string name="curve_previous_point">选择上一个控制点</string>
     <string name="curve_next_point">选择下一个控制点</string>
     <string name="curve_hint">拖动圆点调整 · 轻点加点 · 右下角精调</string>
-    <string name="curve_undo">撤销曲线编辑</string>
-    <string name="curve_redo">重做曲线编辑</string>
     <string name="curve_more">曲线复位选项</string>
-    <string name="curve_expand_photo">展开照片预览</string>
-    <string name="curve_restore_tools">返回曲线调整</string>
     <string name="curve_coordinates">输入 %1$d · 输出 %2$d</string>
-    <string name="curve_edit">编辑曲线</string>
-    <string name="curve_close">关闭曲线</string>
-    <string name="curve_done">完成</string>
-    <string name="curve_entry_summary">五通道精细调整 · 在独立编辑区操作</string>
-    <string name="curve_entry_changed">已调整 · 进入编辑或复位</string>
+    <string name="curve_entry_summary">五通道精细调整 · 点右侧按钮就地展开</string>
+    <string name="curve_entry_changed">已调整 · 就地展开可继续微调或复位</string>
     <string name="curve_point">控制点 %1$d / %2$d</string>
     <string name="curve_input">曲线输入</string>
     <string name="curve_output">曲线输出</string>
@@ -54,14 +47,8 @@
     <string name="color_reset_all">复位全部色彩</string>
     <string name="color_unsupported">这份色彩数据无法读取，原记录已保留。请更新应用，或复位色彩后再导出。</string>
     <string name="stock_photo_preview">胶片实时预览</string>
-    <string name="stock_original">原图</string>
-    <string name="stock_printed">冲印效果</string>
-    <string name="stock_split_comparison">分割对比</string>
     <string name="stock_compare">前后对比</string>
     <string name="stock_close_comparison">关闭前后对比</string>
-    <string name="stock_hold_original">按住查看原图</string>
-    <string name="stock_original_release">原图 · 松手恢复</string>
-    <string name="stock_preview_empty">导入照片后可实时试片</string>
     <string name="mixer_title">通道混合</string>
     <string name="mixer_summary">调整红、绿、蓝的混合比例</string>
     <string name="mixer_output">输出通道</string>
@@ -98,7 +85,7 @@
     <string name="edit_select_targets">选择目标照片</string>
     <string name="edit_groups_hint">选择要保留的调整，构图和片边默认不选。</string>
     <string name="edit_local_values_hint">不复制原片信息、自动日期结果、智能分析记录和随机种子。勾选构图后才会复制裁剪与旋转。</string>
-    <string name="edit_presets_hint">保存常用的胶片搭配和调色设置，随时应用到选中的照片。与导出配方分别保存。</string>
+    <string name="edit_presets_hint">保存常用的胶片搭配和调色设置，随时应用到选中的照片。与导出方案分别保存。</string>
     <string name="edit_presets_empty">把喜欢的调整留下来</string>
     <string name="edit_presets_empty_hint">调整好当前照片后，保存为第一个编辑预设。下次可以直接使用。</string>
     <string name="edit_preset_name">配方名称</string>
@@ -397,7 +384,7 @@
     <string name="halation_headroom_hint">仅为接近画面峰值的高光补充模拟余量，保留其颜色。0 EV 使用记录值；此项不会恢复原片已丢失的细节。</string>
     <string name="halation_classic_hint">保留旧版光晕计算，已有照片不会自动改变。切换背反射后可调整高光余量。</string>
     <string name="export_host_channel">照片导出</string>
-    <string name="export_host_title">SpekLab相机 正在冲印</string>
+    <string name="export_host_title">SpeklabCam 正在冲印</string>
     <string name="export_host_working">保持原始画质处理照片，可返回应用查看进度</string>
     <string name="export_corrupt_frame">全尺寸渲染结果异常，已停止保存。原片和编辑设置已保留。</string>
     <string name="date_imprint_photo_hint">开启时自动填入照片的拍摄日期与参数，已有文字保留。未记录的信息可手动补充。</string>

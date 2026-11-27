@@ -4,6 +4,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -30,17 +35,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -91,22 +100,6 @@ internal fun PhotoMetadataStrip(vm: EditorViewModel) {
 }
 
 @Composable
-internal fun ParameterStockCaption(vm: EditorViewModel, onBrowse: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).clickable(onClick = onBrowse)
-        .semantics { contentDescription = "胶片与相纸" }.padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
-        Text(vm.films.firstOrNull { it.id == vm.params.filmId }?.name ?: "胶片",
-            Modifier.padding(start = 8.dp).weight(1f),
-            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(vm.papers.firstOrNull { it.id == vm.params.paperId }?.name ?: "相纸", Modifier.weight(1f),
-            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
 internal fun EditorStockSelection(vm: EditorViewModel, onBrowseFilms: () -> Unit, onBrowsePapers: () -> Unit) {
     val film = vm.films.firstOrNull { it.id == vm.params.filmId }
     val papers = vm.papers.filter { StockCatalog.canPrint(vm.params.filmId, it.id) }
@@ -145,11 +138,17 @@ internal fun PhotoCanvas(
     modifier: Modifier = Modifier,
     showHistogram: Boolean = com.spektralab.android.ui.components.UiPrefs.showHistogram,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    zoomable: Boolean = false,
 ) {
     val canCompare = vm.sourceBitmap != null && vm.rendered != null && !vm.isCropping
     val canHoldOriginal = canCompare && !comparing
     var holdingOriginal by remember(vm.currentUri, vm.sourceBitmap) { mutableStateOf(false) }
-    val showingOriginal = canHoldOriginal && holdingOriginal
+    // 双指缩放只在编辑预览开：pinching 期间不响应「按住看原图」，两个手势不打架。
+    var zoom by remember(vm.currentUri) { mutableFloatStateOf(1f) }
+    var panX by remember(vm.currentUri) { mutableFloatStateOf(0f) }
+    var panY by remember(vm.currentUri) { mutableFloatStateOf(0f) }
+    var pinching by remember { mutableStateOf(false) }
+    val showingOriginal = canHoldOriginal && holdingOriginal && !pinching
     BoxWithConstraints(
         modifier.fillMaxWidth().background(backgroundColor)
             .semantics {
@@ -170,11 +169,47 @@ internal fun PhotoCanvas(
                         holdingOriginal = false
                     }
                 })
-            },
+            }
+            .then(if (zoomable && !vm.isCropping) Modifier.clipToBounds().pointerInput(vm.currentUri) {
+                // 两指捏合缩放 + 平移：只改显示变换，不重渲染；缩回 1 倍自动回中。
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    var twoDown = false
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        if (event.changes.count { it.pressed } >= 2) {
+                            if (!twoDown) { twoDown = true; pinching = true; holdingOriginal = false }
+                            val gestureZoom = event.calculateZoom()
+                            val panDelta = event.calculatePan()
+                            val centroid = event.calculateCentroid(useCurrent = true)
+                            val newZoom = (zoom * gestureZoom).coerceIn(1f, 6f)
+                            val w = size.width.toFloat().coerceAtLeast(1f)
+                            val h = size.height.toFloat().coerceAtLeast(1f)
+                            if (newZoom <= 1.02f) { zoom = 1f; panX = 0f; panY = 0f } else {
+                                val fx = centroid.x - w / 2f
+                                val fy = centroid.y - h / 2f
+                                panX = (panX + fx * (1f - gestureZoom) + panDelta.x)
+                                    .coerceIn(-w * (newZoom - 1f) / 2f, w * (newZoom - 1f) / 2f)
+                                panY = (panY + fy * (1f - gestureZoom) + panDelta.y)
+                                    .coerceIn(-h * (newZoom - 1f) / 2f, h * (newZoom - 1f) / 2f)
+                                zoom = newZoom
+                            }
+                            event.changes.forEach { if (it.pressed) it.consume() }
+                        }
+                        if (event.changes.none { it.pressed }) break
+                    }
+                    if (twoDown) pinching = false
+                }
+            } else Modifier),
         contentAlignment = Alignment.Center
     ) {
         val source = vm.sourceBitmap
         val rendered = vm.rendered
+        val zoomLayer = if (zoomable && !comparing) Modifier.graphicsLayer {
+            scaleX = zoom; scaleY = zoom
+            translationX = if (zoom > 1f) panX else 0f
+            translationY = if (zoom > 1f) panY else 0f
+        } else Modifier
         if (vm.isCropping && source != null) {
             CropOverlay(
                 bitmap = source,
@@ -190,11 +225,11 @@ internal fun PhotoCanvas(
         } else if (comparing && canCompare) {
             BeforeAfterPreview(source!!, rendered!!, Modifier.fillMaxSize())
         } else if (showingOriginal) {
-            Image(source!!.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            Image(source!!.asImageBitmap(), null, Modifier.fillMaxSize().then(zoomLayer), contentScale = ContentScale.Fit)
         } else if (rendered != null) {
-            Image(rendered.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            Image(rendered.asImageBitmap(), null, Modifier.fillMaxSize().then(zoomLayer), contentScale = ContentScale.Fit)
         } else if (source != null) {
-            Image(source.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            Image(source.asImageBitmap(), null, Modifier.fillMaxSize().then(zoomLayer), contentScale = ContentScale.Fit)
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Rounded.AddPhotoAlternate, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
@@ -219,18 +254,7 @@ internal fun PhotoCanvas(
             }
         }
 
-        if (canHoldOriginal) {
-            Text(
-                if (showingOriginal) "松手恢复" else "查看原图",
-                Modifier.align(Alignment.BottomStart).padding(10.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = .55f), TheiaShapes.badge)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        // 「查看原图」角标已删：按住画面即原图、松手即恢复，动作本身不变。
 
         // 右下角「下张胶片」：同「查看原图」风格，点一下切到工作台里的下一张。
         if (!vm.isCropping && vm.currentIndex < vm.photos.lastIndex && vm.photos.isNotEmpty()) {

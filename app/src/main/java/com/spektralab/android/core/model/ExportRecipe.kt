@@ -1,7 +1,7 @@
 package com.spektralab.android.core.model
 
 
-/** 一条导出配方：格式 + 长边分辨率 + 色彩空间。 */
+/** 一条导出方案（界面上叫「方案」）：格式 + 长边分辨率 + 色彩空间 + 质量 + 保留开关 + 命名。 */
 data class ExportRecipe(
     val name: String,
     val format: String,      // "JPEG" / "PNG" / "TIFF"

@@ -30,12 +30,12 @@ import com.spektralab.android.core.color.ChannelMixer
 import com.spektralab.android.core.color.MixerChannel
 import com.spektralab.android.core.color.MixerRow
 import com.spektralab.android.feature.editor.EditorViewModel
-import com.spektralab.android.ui.components.EditorSection
+import com.spektralab.android.ui.components.MenuBody
 import com.spektralab.android.ui.theme.TheiaShapes
 import kotlin.math.roundToInt
 
 @Composable
-internal fun ChannelMixerEditor(vm: EditorViewModel) {
+internal fun ChannelMixerEditor(vm: EditorViewModel, embedded: Boolean = false) {
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
     val output = MixerChannel.entries[selectedIndex]
     val mixer = vm.params.channelMixer
@@ -49,7 +49,7 @@ internal fun ChannelMixerEditor(vm: EditorViewModel) {
         vm.finishMixerEdit()
     }
 
-    EditorSection(stringResource(R.string.mixer_title), stringResource(R.string.mixer_summary)) {
+    MenuBody(embedded, stringResource(R.string.mixer_title), stringResource(R.string.mixer_summary)) {
         if (vm.params.unreadableChannelMixer != null) {
             Text(stringResource(R.string.mixer_unsupported), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)

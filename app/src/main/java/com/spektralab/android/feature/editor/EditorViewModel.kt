@@ -358,7 +358,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     var exportCustomSize by mutableStateOf<com.spektralab.android.core.model.ExportSize?>(null)
     var exportNaming by mutableStateOf(com.spektralab.android.core.model.ExportNaming())
     private val exportPreferences = app.getSharedPreferences("export_metadata", android.content.Context.MODE_PRIVATE)
-    // 自定义保存目录（SAF tree Uri；为空 = 系统相册 Pictures/spektralab）。
+    // 自定义保存目录（SAF tree Uri；为空 = 系统相册 Pictures/Speklab）。
     var exportDirUri: Uri? = exportPreferences.getString("dir", null)?.let(Uri::parse)
         private set
     private var keepCaptureState by mutableStateOf(exportPreferences.getBoolean("capture", true))
@@ -2013,7 +2013,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         engine?.cancel()
     }
 
-    // 应用一条导出配方。
+    // 应用一条导出方案。
     fun applyRecipe(recipe: ExportRecipe) {
         exportFormat = recipe.format
         exportRes = recipe.res
@@ -2510,7 +2510,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                             cropAspect = if (saved.cropW >= 1f && saved.cropH >= 1f) "原始" else "自定义"
                             append("已恢复上次编辑")
                         } else {
-                            params = applyDefaultMaterials(EditorParams())
+                            params = EditorParams()
                             resetGeometry()
                             // 片边默认关（和纯净原版一致）：新照片打开时不再擅自打开片边，日期由 App 画在画面内。
                             // 画幅编号也不再按整卷预排：留在 0 就是这一张自己随机到的那一号
@@ -2567,19 +2567,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         return decodeSampled(uri,320)
     }
 
-    /**
-     * 设置里的「默认胶片 / 默认相纸」：选具体型号时锁定材料（自动显影只调影调），
-     * 选「自动」(auto) 时保持原样交给自动显影 / 出厂默认。已保存编辑的照片不走这里。
-     */
-    private fun applyDefaultMaterials(p: EditorParams): EditorParams {
-        val settings = com.spektralab.android.data.local.AppSettingsStore.get(app).snapshot().value
-        if (settings.defaultFilm == "auto") return p
-        p.filmId = settings.defaultFilm
-        p.paperId = if (settings.defaultPaper != "auto") settings.defaultPaper
-            else StockCatalog.load(app).first.firstOrNull { it.id == p.filmId }?.targetPrint ?: p.paperId
-        StockCatalog.repair(p.filmId, p.paperId)?.let { (film, paper) -> p.filmId = film; p.paperId = paper }
-        return p
-    }
 
     /** No renderer/session work here. The import queue and first-photo load share this lock. */
     private suspend fun ensureSmartParams(uri: Uri, style: SmartDevelopStyle, enabled: Boolean): EditorParams? {
@@ -2609,7 +2596,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 if(suggestion==null)return@withLock null
                 if(!currentCoroutineContext().isActive)return@withLock null
                 if(chosenRecipe!=null) suggestion.smartDevelopRecipe=chosenRecipe.name
-                else applyDefaultMaterials(suggestion)
+                // 没有选中「我的配方」时，材料完全交给分析结果，不再套默认胶片 / 相纸。
                 val committed=withContext(Dispatchers.IO) {
                     // A manual/imported sidecar wins even if it appeared during analysis.
                     EditStore.saveIfAbsent(app, uri, suggestion)
@@ -2668,7 +2655,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 if(photo!=photoGeneration)return@launch
                 if(result==null){smartMessage="这张照片暂时无法分析，可继续手动调整";return@launch}
-                params=applyDefaultMaterials(result)
+                params=result
                 smartMessage="已应用${style.title} · ${result.smartDevelopSummary}"
                 scheduleRender()
             } catch(cancelled:CancellationException){throw cancelled}
@@ -2876,7 +2863,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     // Resolve missing smart edits before any output; later sidecar writes cannot change this batch.
                     val edits = batchPhotos.associateWith { uri ->
                         batchEdits[uri] ?: EditSnapshot.capture(
-                            ensureSmartParams(uri, batchSmartStyle, batchAutoDevelop) ?: applyDefaultMaterials(EditorParams())
+                            ensureSmartParams(uri, batchSmartStyle, batchAutoDevelop) ?: EditorParams()
                         )
                     }
                     for ((i, uri) in batchPhotos.withIndex()) {
@@ -3252,7 +3239,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     /**
-     * 导出文件名：<这张照片的原文件名>_spektralab + 当前格式后缀。
+     * 导出文件名：[自定义前缀_] <这张照片的原文件名>_Speklab + 当前格式后缀。
+     * 前缀在导出页「文件命名」里填，留空就完全不加；勾选了命名内容时前缀同样接在最前面。
      * 必须按照片自己传入的 uri 取名：批量导出时每张的照片都要用自己的源文件名，
      * 否则整批会写出同一个名字，相册只能加 (1)(2) 区分。
      */
@@ -3269,7 +3257,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             ?: resolved
         val base = raw?.substringBeforeLast('.')?.trim()?.trim('.')?.takeIf { it.isNotBlank() } ?: "SpekLab"
         if (options.naming.tokens.isEmpty()) {
-            return base.replace(Regex("[\\\\/:*?\"<>|\u0000-\u001f]"), "_").take(80) + "_spektralab"
+            return options.naming.withPrefix(base.replace(Regex("[\\\\/:*?\"<>|\u0000-\u001f]"), "_").take(80) + "_Speklab")
         }
         val (films, papers) = StockCatalog.load(app)
         val film = films.firstOrNull { it.id == editParams.filmId }?.name ?: editParams.filmId

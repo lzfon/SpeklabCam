@@ -22,13 +22,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.spektralab.android.EditorTab
 import com.spektralab.android.feature.editor.EditorViewModel
-import com.spektralab.android.feature.editor.ui.panels.GradePanel
-import com.spektralab.android.feature.editor.ui.panels.PrintPanel
-import com.spektralab.android.feature.editor.ui.panels.ShootPanel
-import com.spektralab.android.ui.components.LocalAutoCollapseSections
-import com.spektralab.android.ui.components.LocalSectionGroup
-import com.spektralab.android.ui.components.SectionGroup
-import com.spektralab.android.ui.components.UiPrefs
 import com.spektralab.android.ui.theme.TheiaShapes
 
 @Composable
@@ -38,6 +31,7 @@ internal fun EditorPanel(
     modifier: Modifier = Modifier,
     stateHolder: SaveableStateHolder,
     showHeader: Boolean = true,
+    menu: MenuBoardState,
     onSaveRecipe: () -> Unit,
 ) {
     Surface(modifier = modifier.fillMaxWidth().clip(TheiaShapes.panel), color = MaterialTheme.colorScheme.surfaceContainerLow, tonalElevation = 0.dp) {
@@ -54,9 +48,9 @@ internal fun EditorPanel(
             stateHolder.SaveableStateProvider(selectedTab) {
               Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(horizontal = 0.dp, vertical = 0.dp)
             ) {
-                EditorParameterContent(vm, selectedTab)
+                EditorMenuBoard(vm, selectedTab, menu)
                 Spacer(Modifier.height(12.dp))
               }
             }
@@ -64,25 +58,5 @@ internal fun EditorPanel(
     }
 }
 
-@Composable
-internal fun EditorParameterContent(vm: EditorViewModel, selectedTab: EditorTab) {
-    val group = remember(selectedTab) { SectionGroup() }
-    androidx.compose.runtime.CompositionLocalProvider(
-        LocalSectionGroup provides group,
-        LocalAutoCollapseSections provides UiPrefs.autoCollapseSections,
-    ) {
-        when (selectedTab) {
-            EditorTab.Develop -> {
-                ShootPanel(vm)
-                PrintPanel(vm)
-            }
-            EditorTab.Grade -> GradePanel(vm)
-            EditorTab.Export -> Unit
-            EditorTab.Gallery -> Unit
-        }
-    }
-}
 
-// ============================================================
-//  四个 Tab 面板
-// ============================================================
+

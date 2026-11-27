@@ -25,7 +25,9 @@ android {
 
     defaultConfig {
         // 与上游 Theia 的 com.spektralab.android 区分开，两者可在同一台手机上并存安装。
-        applicationId = "com.spektralabcam.android"
+        // 改版测试线：独立包名，与正式版「SpekLab相机」（com.spektralabcam.android）
+        // 在同一台手机上并存安装、互不覆盖数据；正式发布仍用回上面的包名。
+        applicationId = "com.spektralabcam.revamp"
         minSdk = 26
         targetSdk = 36
         // versionCode 从 1000 起，每发一个包只加 1，永不回退、永不复用（内部调试号 v87/v88 不进公开版本）。

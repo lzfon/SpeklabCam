@@ -29,7 +29,6 @@ internal class AppSettingsStore(directory: File) {
         decode(json) // Validate what is on disk before replacing it.
         json.put("version", 1).put("preview_long_edge", value.previewLongEdge)
             .put("render_cache_mib", value.renderCacheMiB)
-            .put("default_film", value.defaultFilm).put("default_paper", value.defaultPaper)
         val bytes = json.toString().toByteArray(Charsets.UTF_8)
         require(bytes.size <= MAX_BYTES)
         val stream = file.startWrite()
@@ -64,14 +63,9 @@ internal class AppSettingsStore(directory: File) {
         // Accept an unversioned document as v0; an absent file keeps the pre-settings defaults.
         require(integer("version", 0) in 0..1)
         val defaults = AppSettings()
-        fun stock(key: String, default: String): String {
-            if (!json.has(key)) return default
-            require(json.get(key) is String)
-            return json.getString(key)
-        }
+        // 旧文档里的 default_film / default_paper 直接忽略：材料设置已整体撤下。
         return AppSettings(integer("preview_long_edge", defaults.previewLongEdge),
-            integer("render_cache_mib", defaults.renderCacheMiB),
-            stock("default_film", defaults.defaultFilm), stock("default_paper", defaults.defaultPaper))
+            integer("render_cache_mib", defaults.renderCacheMiB))
     }
 
     companion object {

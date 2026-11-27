@@ -1,9 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 来源库 Lucide 几何（ISC 许可）；原始 SVG、来源 URL 与 SHA-256 见 src/main/design/lucide/provenance.json。用途：首页底栏「图库」 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path android:fillColor="#FFFFFFFF" android:pathData="M2.6,4.6h18.8a0.9,0.9 0 0 1 0.9,0.9v3.4a0.9,0.9 0 0 1 -0.9,0.9H2.6a0.9,0.9 0 0 1 -0.9,-0.9V5.5a0.9,0.9 0 0 1 0.9,-0.9zM2.6,14.2h18.8a0.9,0.9 0 0 1 0.9,0.9v3.4a0.9,0.9 0 0 1 -0.9,0.9H2.6a0.9,0.9 0 0 1 -0.9,-0.9v-3.4a0.9,0.9 0 0 1 0.9,-0.9z" />
-    <path android:fillColor="#FF0E3B24" android:pathData="M4.4,5.6h2v1.6h-2zM8.2,5.6h2v1.6h-2zM12,5.6h1.9v1.6h-1.9zM15.7,5.6h1.9v1.6h-1.9zM19.4,5.6h1.6v1.6h-1.6zM4.4,15.2h2v1.6h-2zM8.2,15.2h2v1.6h-2zM12,15.2h1.9v1.6h-1.9zM15.7,15.2h1.9v1.6h-1.9zM19.4,15.2h1.6v1.6h-1.6z" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M4.4,9.9h15.2a0.4,0.4 0 0 1 0.4,0.4v3.4a0.4,0.4 0 0 1 -0.4,0.4H4.4a0.4,0.4 0 0 1 -0.4,-0.4v-3.4a0.4,0.4 0 0 1 0.4,-0.4z" />
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M 5,3 h 14 a 2,2 0 0 1 2,2 v 10 a 2,2 0 0 1 -2,2 h -14 a 2,2 0 0 1 -2,-2 v -10 a 2,2 0 0 1 2,-2 z" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M4 21h1" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M9 21h1" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M14 21h1" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M19 21h1" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" />
 </vector>

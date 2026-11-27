@@ -92,5 +92,8 @@ internal fun captureReadouts(info: List<Pair<String, String>>): List<String> {
     }
 }
 
-internal fun captureClock(info: List<Pair<String, String>>): String? = info.firstOrNull { it.first == "拍摄时间" }?.second
-    ?.let { Regex("(?: |T)([0-2][0-9]:[0-5][0-9])").find(it)?.groupValues?.get(1) }
+/** 拍摄日期：EXIF 原串是「yyyy:MM:dd HH:mm:ss」，这里取年月日写成 2026-11-26。 */
+internal fun captureDay(info: List<Pair<String, String>>): String? =
+    info.firstOrNull { it.first == "拍摄时间" }?.second
+        ?.let { Regex("^\\s*(\\d{4})[:\\-.](\\d{1,2})[:\\-.](\\d{1,2})").find(it) }
+        ?.let { m -> "%d-%02d-%02d".format(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt()) }

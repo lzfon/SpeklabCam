@@ -13,6 +13,9 @@ object UiPrefs {
     private const val KEY_SHOW_HISTOGRAM = "preview_histogram"
     private const val KEY_WORKBENCH_AUTO_HIDE = "workbench_auto_hide"
     private const val KEY_WORKBENCH_HIDE_SECONDS = "workbench_hide_seconds"
+    private const val KEY_HOME_VIEW = "home_view_mode"
+    private const val HOME_PREVIEW = "preview"
+    private const val HOME_GRID = "grid"
     private var prefs: SharedPreferences? = null
 
     var autoCollapseSections by mutableStateOf(true)
@@ -30,6 +33,13 @@ object UiPrefs {
     var workbenchHideSeconds by mutableStateOf(3)
         private set
 
+    /** 首页预览区显示方式：preview = 当前照片预览框；grid = 图库照片两列宫格。 */
+    var homeViewMode by mutableStateOf(HOME_PREVIEW)
+        private set
+
+    /** 首页预览区走的是不是图库宫格。 */
+    val homeShowLibraryGrid: Boolean get() = homeViewMode == HOME_GRID
+
     fun attach(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -38,6 +48,7 @@ object UiPrefs {
         showHistogram = p.getBoolean(KEY_SHOW_HISTOGRAM, true)
         workbenchAutoHide = p.getBoolean(KEY_WORKBENCH_AUTO_HIDE, true)
         workbenchHideSeconds = p.getInt(KEY_WORKBENCH_HIDE_SECONDS, 3).coerceIn(3, 10)
+        homeViewMode = normalizeHomeView(p.getString(KEY_HOME_VIEW, HOME_PREVIEW))
     }
 
     fun setAutoCollapse(value: Boolean) {
@@ -54,6 +65,14 @@ object UiPrefs {
         workbenchAutoHide = value
         prefs?.edit()?.putBoolean(KEY_WORKBENCH_AUTO_HIDE, value)?.apply()
     }
+
+    fun updateHomeViewMode(value: String) {
+        homeViewMode = normalizeHomeView(value)
+        prefs?.edit()?.putString(KEY_HOME_VIEW, homeViewMode)?.apply()
+    }
+
+    private fun normalizeHomeView(value: String?): String =
+        if (value == HOME_GRID) HOME_GRID else HOME_PREVIEW
 
     fun updateWorkbenchHideSeconds(value: Int) {
         workbenchHideSeconds = value.coerceIn(3, 10)
