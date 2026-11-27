@@ -134,9 +134,9 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
                             }.padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(stringResource(R.string.photos_put_session, selection.selected.size), Modifier.weight(1f),
-                                style = MaterialTheme.typography.titleSmall, maxLines = 1,
+                                style = MaterialTheme.typography.bodySmall, maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
-                            Text(stringResource(R.string.photos_put), style = MaterialTheme.typography.bodyMedium,
+                            Text(stringResource(R.string.photos_put), style = MaterialTheme.typography.bodySmall,
                                 color = if (canPut) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
