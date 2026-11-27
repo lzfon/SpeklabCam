@@ -206,7 +206,7 @@
     <string name="library_filter_clear">清除筛选</string>
     <string name="library_no_results">没有符合条件的照片</string>
     <string name="library_no_results_hint">试试更换相册，或清除星级与色标筛选。</string>
-    <string name="library_result_count">%1$d 张匹配，共 %2$d 张</string>
+    <string name="library_result_count">%1$d 张/共 %2$d 张</string>
     <string name="photos_source_actions">原片操作：%1$s</string>
     <string name="photos_check_source">核对原片</string>
     <string name="photos_relink_source">重新关联原片</string>
@@ -350,7 +350,10 @@
     <string name="photos_remove">从图库移除</string>
     <string name="photos_remove_count">移除</string>
     <string name="photos_add_album">加入相册</string>
-    <string name="photos_add_viewing">加入观片台</string>
+    <string name="photos_add_viewing">观片台</string>
+    <string name="photos_put_session">选中 %1$d 张放入工作台</string>
+    <string name="photos_put">放入</string>
+    <string name="photos_double_tap_hint">星级、色标双击恢复</string>
     <string name="photos_add_project">观片台项目</string>
     <string name="photos_choose_project">选择观片台项目</string>
     <string name="photos_choose_album">选择相册</string>
@@ -388,5 +391,5 @@
     <string name="date_imprint_date_found">照片包含拍摄日期，可手动修改。</string>
     <string name="date_imprint_data_missing">照片未记录拍摄参数，请手动输入。</string>
     <string name="date_imprint_data_found">已读取可用的焦距、光圈、快门和 ISO，缺失项可补充。</string>
-    <string name="photos_session_resume_count">恢复上次工作台 %1$d 张照片</string>
+    <string name="photos_session_resume_count">恢复工作台 %1$d 张</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -113,24 +114,26 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
                 }
                 // 只在浏览态提示：多选时列表项里不出现星级/色标控件。
                 if (!selection.active) item {
-                    Text("星级、色标双击恢复", Modifier.padding(bottom = 4.dp),
+                    Text(stringResource(R.string.photos_double_tap_hint), Modifier.padding(bottom = 4.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 // 多选时，同一位置换成「把选中的放入工作台」：只放勾选的那几张，不是把整列都放进去。
+                // 整条都能点，手机上比角落里的小按钮好按。
                 if (selection.active) item {
+                    val canPut = canAct && selection.selected.isNotEmpty()
                     Row(Modifier.fillMaxWidth().height(40.dp).clip(TheiaShapes.panel)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("选中${selection.selected.size}张放入工作台", Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleSmall, maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                        TextButton(onClick = {
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .clickable(enabled = canPut) {
                             onAddAllToWorkbench(selection.selected.values.map { Uri.parse(it.uri) })
                             selection.clear()
-                        }, enabled = canAct && selection.selected.isNotEmpty(),
-                            modifier = Modifier.height(36.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp)) { Text("放入") }
+                        }.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(R.string.photos_put_session, selection.selected.size), Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleSmall, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.photos_put), style = MaterialTheme.typography.bodyMedium,
+                            color = if (canPut) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (controller.loading) item {

@@ -19,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -124,22 +123,21 @@ internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolea
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.library_result_count, controller.matchingCount, controller.totalCount),
-                Modifier.weight(1f), fontSize = 11.sp, lineHeight = 15.sp, maxLines = 1,
+                Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             // 上次的工作台不再占一整块卡片，恢复入口收进这一行。
             // 这一行放不下三段长文字：恢复入口折成两行小字、清除筛选收成一个叉。
             if (showRestore) controller.savedSession?.takeIf { it.photos.isNotEmpty() }?.let { session ->
                 TextButton(onClick = { controller.restoreSession(onRestore) }, enabled = enabled && !controller.loading,
-                    contentPadding = PaddingValues(horizontal = 6.dp),
-                    modifier = Modifier.height(40.dp).widthIn(max = 148.dp)) {
+                    contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.height(40.dp)) {
                     Text(stringResource(R.string.photos_session_resume_count, session.photos.size),
-                        fontSize = 11.sp, lineHeight = 14.sp, maxLines = 2,
-                        textAlign = TextAlign.End, overflow = TextOverflow.Ellipsis)
+                        style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 }
             }
-            if (controller.filter.active) IconButton(onClick = { controller.applyFilter(PhotoLibraryFilter()) },
-                enabled = enabled, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.library_filter_clear), modifier = Modifier.size(18.dp))
+            if (controller.filter.active) TextButton(onClick = { controller.applyFilter(PhotoLibraryFilter()) },
+                enabled = enabled, contentPadding = PaddingValues(horizontal = 8.dp),
+                modifier = Modifier.height(40.dp)) {
+                Text(stringResource(R.string.library_filter_clear), style = MaterialTheme.typography.bodySmall, maxLines = 1)
             }
         }
     }
