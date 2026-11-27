@@ -9,7 +9,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -118,7 +118,7 @@ internal fun AdjustmentWorkspace(
                             Box {
                                 IconButton(onClick = { toolMenuOpen = true }, modifier = Modifier.size(34.dp)
                                     .semantics { contentDescription = "打开工具菜单" }) {
-                                    Icon(Icons.Rounded.Build, null, modifier = Modifier.size(20.dp),
+                                    Icon(Icons.Rounded.MoreHoriz, null, modifier = Modifier.size(20.dp),
                                         tint = MaterialTheme.colorScheme.primary)
                                 }
                                 DropdownMenu(expanded = toolMenuOpen, onDismissRequest = { toolMenuOpen = false }) {
