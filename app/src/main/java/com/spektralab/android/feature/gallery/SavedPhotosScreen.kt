@@ -120,20 +120,25 @@ internal fun SavedPhotosScreen(controller: SavedPhotosController, enabled: Boole
 
                 // 多选时，同一位置换成「把选中的放入工作台」：只放勾选的那几张，不是把整列都放进去。
                 // 整条都能点，手机上比角落里的小按钮好按。
-                if (selection.active) item {
+                // 滚到顶就吸附在那里，翻到列表多深都还能点「放入」。
+                if (selection.active) stickyHeader {
                     val canPut = canAct && selection.selected.isNotEmpty()
-                    Row(Modifier.fillMaxWidth().height(40.dp).clip(TheiaShapes.panel)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .clickable(enabled = canPut) {
-                            onAddAllToWorkbench(selection.selected.values.map { Uri.parse(it.uri) })
-                            selection.clear()
-                        }.padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.photos_put_session, selection.selected.size), Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleSmall, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis)
-                        Text(stringResource(R.string.photos_put), style = MaterialTheme.typography.bodyMedium,
-                            color = if (canPut) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    // 吸顶后会盖在列表上，这一层自己铺底色，不能透。
+                    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+                        .padding(horizontal = 20.dp, vertical = 4.dp)) {
+                        Row(Modifier.fillMaxWidth().height(40.dp).clip(TheiaShapes.panel)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            .clickable(enabled = canPut) {
+                                onAddAllToWorkbench(selection.selected.values.map { Uri.parse(it.uri) })
+                                selection.clear()
+                            }.padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(stringResource(R.string.photos_put_session, selection.selected.size), Modifier.weight(1f),
+                                style = MaterialTheme.typography.titleSmall, maxLines = 1,
+                                overflow = TextOverflow.Ellipsis)
+                            Text(stringResource(R.string.photos_put), style = MaterialTheme.typography.bodyMedium,
+                                color = if (canPut) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
                 if (controller.loading) item {
