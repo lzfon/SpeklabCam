@@ -22,10 +22,12 @@
 - git tag 用干净短号（`v1.0.0`），不带 `+` 与上游信息。
 - 内部调试号（v87、v88 …）只用于协作记录，不进 tag、不进 Release 标题、不写进 App。
 - 首发定为 **1.0.0（versionCode 1000）**；此前所有内部开发版本一律收回为开发记录，不再对外引用。
-- 当前对外发布：**1.0.2（versionCode 1002）**，tag `v1.0.2`，2026-11-26。只修两个 bug：
-  RAW（`.dng`）被当成位图导出只出内嵌预览小图、照片图库的相册名不回显并补一个「未分组」筛选，
-  明细见下面「2026-11-26 追加」。上一版 1.0.1（versionCode 1001，2026-11-25）的三节改动
-  （日期后背取拍摄日期、片边随机身份重做、帧号改名与批量连号开关）见再上面三节。
+- 当前对外发布：**1.1.0（versionCode 1003）**，tag `v1.1.0`，2026-11-28。MINOR 版：界面重排
+  （首页与底栏、编辑页三层菜单与控制条、图库计数行）加一批行为与数据安全修正（单击不再清空工作台、
+  缩略图显示成品效果图、直方图改开根号刻度、工作台默认不再自动收起），影像算法、配方文件与侧车格式未改，
+  明细见下面「2026-11-28 追加」与 `docs/release-notes-v1.1.0.md`。
+  上一版 1.0.2（versionCode 1002，2026-11-26）只修两个 bug（RAW 被当位图导出只出内嵌预览小图、
+  相册名不回显并补「未分组」筛选），见再上面「2026-11-26 追加」。
 - 配方 JSON **不编版本号**：固定一个文件名 `presets/speklabcam-recipes.json`，内容改了就直接改它，历史交给提交记录，不跟着 App 发版另开 `-v2`。
   顶层 `kind` 是 app 判定「是不是本软件配方文件」的格式标识（`version: 1` 是内部存储格式字段，导入时不校验），都不表示配方的迭代版本。
 - 完整规则表见 [README.md](README.md#版本规则)。
@@ -244,3 +246,78 @@ EXIF 的日期时间字符串本身不带时区标记，媒体库会按 UTC 记�
 「批量导出 RAW 受 `MAX_INPUT_EDGE=4096` 限制」的判断**作废**：同机器导入 50 颗同类型 DNG 后，
 单张原始尺寸与批量导出均正常；当时不落文件用的是从未保存过参数的一张，命中的是 `TABLE_EXPORT_RAW_UNEDITED`，
 与输入边长上限无关。
+
+## 2026-11-28 追加（已发布 · 随 `1.1.0` / versionCode 1003，tag `v1.1.0`）
+
+MINOR 版：界面重排 + 行为与数据安全修正。**未改影像算法、未改配方文件、未改编辑数据与侧车格式**，
+引擎 C++/Vulkan 源码一行没动，仍用上游官方预编译产物。逐条用户向描述见 `docs/release-notes-v1.1.0.md`。
+
+### 1. 数据安全：单击一格不再清空工作台
+
+- `EditorViewModel.openPhotos(listOf(uri))` 会把 `photos` 整组替换并立刻 `persistWorkbench()` 覆盖存档，
+  首页宫格、首页瀑布流、图库三处单击都走这条路：10 张的工作台点一下就只剩 1 张，且没有回头路。
+- 现在分三层：这张已在工作台上 → 只 `selectPhoto` 切换；工作台空着 → 直接打开；
+  这张不在工作台上 → 挂起请求并弹框问「追加至工作台 / 新建工作台（替换当前 N 张）/ 取消」
+  （`WorkbenchJoinDialog.kt`，首页路由与图库路由共用同一个挂起状态，不会弹两层）。
+
+### 2. 缩略图显示已渲染的成品（方案 A）
+
+- 新增 `data/cache/EffectThumbnailStore.kt`：`cacheDir/effect-thumbs-512-v1/`，
+  文件名 `<assetId>-<revision>.webp`，WEBP quality 85，总量 64MB LRU，同一张照片写入后清掉它的旧修订号文件。
+- 首页宫格、照片图库、观片台的格子优先取这张效果图，取不到才解原片。
+- 三个故障的修法都写在这里：落盘条件从「参数 JSON 逐字相等」（RAW / 智能显影下恒不成立）改成手势判据；
+  失效从「先删再取」改成「到了才替换」；从「单个 600ms 去抖任务、切照片就取消」改成
+  「静帧一到先复制一张 ≤512 小图排队，后台串行写，写完主动让列表失效重取」。
+- `SavedPhotosController.cancelThumbnail` 的记账错位修正：位图仍留在 16 张内存缓存时不能把它的修订号记录删掉，
+  否则该行滚出屏幕期间改了参数，回到视口会命中缓存短路、又查不到记录，旧效果图一直挂着。
+- 图库原片解码目标 384 → 512（`THUMB_EDGE`，与 `EffectThumbnailStore.MAX_EDGE` 同值）。
+
+### 3. 默认值与一次性对齐
+
+- `UiPrefs.workbenchAutoHide` 出厂默认由 true 改 false（工作台不再闲置自动收起）；
+  直方图、首页显示方式这两项代码默认本来就正确，问题在老设备 SharedPreferences 存的是被手动切过的旧值。
+- `UiPrefs.attach()` 加一次性对齐（`KEY_DEFAULTS_SYNCED` / `DEFAULTS_SYNC = 1`），只覆写
+  `workbench_auto_hide=false`、`preview_histogram=true`、`home_view_mode=preview` 三项，之后不再覆盖用户选择。
+- 关于页、设置页、参数说明里与这三项默认值矛盾的文案同步改正。
+
+### 4. 直方图刻度
+
+- `HistogramView` 由线性 `bins[i]/maxCount` 改为开根号刻度，并补「数组不足 256 桶直接不画」的兜底
+  （线性刻度下主峰吃掉全部高度，其余 255 桶压成贴底一条线，看上去像没画；那条 0 高度分支还可能越界崩）。
+
+### 5. 首页重排与编辑页菜单（改版区间）
+
+- 底栏三格（图库 / Speklab / 观片）、首页齿轮菜单、悬浮簇（智能配方显示当前配方名 + 导入 + 拍摄）。
+- 首页两形态可切换：预览框 · 当前照片（默认，新增 `EditorViewModel.sessionPreview()` 读工作台存档，
+  效果图优先、否则解原片，都在后台线程；读不到才退回相机引导）/ 宫格 · 图库照片（两列错落，长按勾选批量放入）。
+- 编辑页三层菜单、控制条一排到底、工具菜单图标改自绘线框工具箱 `ic_spk_toolbox`；
+  照片条与「放入」条并入计数行、多选态整条可点、恢复入口并入计数行。
+
+### 6. 权限闸门与界面收纳
+
+- `TheiaRoot.withMediaLocation()`：`SDK_INT < 29` 直接放行。`ACCESS_MEDIA_LOCATION` 是 Android 10 才有的权限，
+  低版本问了只会被拒，还白弹一次窗。
+- 低使用率入口（数字中间片、DI TIFF、软打样、高清预览、效果细节检查）从界面撤下，实现代码全部保留。
+
+### 7. 体检清理
+
+- Android Lint 全量（2 errors / 106 warnings / 30 hints，逐条复核）+ Kotlin 编译告警 + 孤儿资源/孤儿函数扫描。
+- 删除 10 项无引用资源（4 条 strings、2 条 colors、4 个 drawable 文件；启动图标实际引用的
+  `ic_launcher_foreground` 未动）与 9 个零调用函数（`ChoiceStrip`、`SectionLabel`、`StockDropdown`、
+  `WideMenuBoard`、`dismissMessage`、`toggleCollapsed`、`previousPhoto`、`saveResult`、`resizeRaw`）；
+  测试与工具入口（`capabilities`、`getParams`、`warmUp`、`renderForExport` 等）全部保留。
+- 删掉一条惰性偏好链路（`autoCollapseSections` / `setAutoCollapse` / `KEY_AUTO_COLLAPSE`）：有存储、有读取，
+  但设置页没有开关、composition local 也从未被提供，用户永远改不动。
+- 修掉 lint 里唯一的 Error 级代码问题（`PhotoLibraryOrganizationUi` 计数行的 SuspiciousIndentation）；
+  `thumbnailDispatcher` 补 `@OptIn(ExperimentalCoroutinesApi::class)`。
+- 复核为误报、未动：`StaticFieldLeak` ×2（构造里已用 `applicationContext`）、`UsableSpace` ×7
+  （全部用的就是 `usableSpace` / `availableBytes`）；`UseKtx` 77 条属风格性，未扫。
+
+### 8. 正式版身份（本版从改版测试线收回）
+
+- 界面改版在独立测试线（包名 `com.spektralabcam.revamp`、显示名 SpeklabCam）上完成真机验证后，
+  发布时逐项收回正式版口径：`applicationId` 回 `com.spektralabcam.android`（`EditVersionProvider`
+  的 authority 随 `${applicationId}` 一起回到 `com.spektralabcam.android.editversions`）、
+  `app_name` 回「SpekLab相机」、`export_host_title` 回「SpekLab相机 正在冲印」、关于页那句测试线说明按 1.0.2 原文恢复。
+- 签名仍用同一把 `speklabcam-release.jks`（证书 SHA-256 `a11fc44c…3cc34b`），
+  已在装有 1.0.2 的真机上以 `pm install -r` 实测覆盖成功，编辑数据、侧车、配方、设置全部保留。

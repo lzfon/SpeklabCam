@@ -19,7 +19,7 @@ internal data class EditVersion(
 
 /** Stable, private resolver identity. This is an edit reference, not a document-provider alias. */
 internal object EditVersionUri {
-    const val AUTHORITY = "com.spektralabcam.revamp.editversions"
+    const val AUTHORITY = "com.spektralabcam.android.editversions"
     fun owns(uri: Uri): Boolean = uri.authority == AUTHORITY
     fun forId(id: String): Uri {
         require(UUID.fromString(id).toString() == id)

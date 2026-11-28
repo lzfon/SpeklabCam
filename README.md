@@ -8,7 +8,7 @@
 
 - 应用显示名：**SpekLab相机**
 - 包名（applicationId）：`com.spektralabcam.android`（与上游 Theia 的 `com.spektralab.android` 区分开，**两个应用可以在同一台手机上并存安装**）
-- 版本口径：见下面[版本规则](#版本规则)。当前发布 **1.0.2（versionCode 1002）**，基于上游引擎 **Theia v0.1.8**
+- 版本口径：见下面[版本规则](#版本规则)。当前发布 **1.1.0（versionCode 1003）**，基于上游引擎 **Theia v0.1.8**
 - 源码仓库：https://github.com/lzfon/SpeklabCam ｜ 下载：本仓库 **Releases** 页
 
 ---
@@ -20,7 +20,7 @@
 | 位置 | 规则 | 例子 |
 | --- | --- | --- |
 | `versionName`（App 内与系统「应用信息」显示） | 只用 `MAJOR.MINOR.PATCH`，**不带任何后缀**；上游基座另写一行，不塞进版本号里 | `1.0.0` |
-| `versionCode`（系统识别用） | 从 **1000** 起，每发一个 APK **加 1**，只增不减、永不复用 | 1000 → 1001 → 1002 |
+| `versionCode`（系统识别用） | 从 **1000** 起，每发一个 APK **加 1**，只增不减、永不复用 | 1000 → 1001 → 1002 → 1003 |
 | git tag | 干净短号，不带 `+` 和上游信息 | `v1.0.0` |
 | Release 标题 | `SpekLab相机 <versionName>（SpeklabCam）`，上游基座写在正文 | |
 | 内测 / 公测 | 用 SemVer 预发布后缀，正式号留空 | `1.1.0-beta.1`、`1.1.0-rc.2` |

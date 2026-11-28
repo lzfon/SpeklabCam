@@ -231,7 +231,7 @@ fun AboutScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     "· 元数据完整性：成片保留原文件名、GPS 位置，并把拍摄时间的时区偏移写全（修掉相册时间被按 UTC 记账导致的 8 小时偏差）；\n" +
                     "· 查看与交互：预览画面双指缩放（1–6 倍）、右上角前后对比、跨会话撤销重做、所有滑轨带复位、失败给中文明确原因；\n" +
                     "· 界面收纳：低使用率入口（数字中间片、软打样、高清预览、效果细节放大）从界面撤下，实现代码全部保留；\n" +
-                    "· 改版测试线：包名 com.spektralabcam.revamp，与正式版 SpekLab相机、原版 Theia 都能并存安装，互不覆盖数据。",
+                    "· 独立身份：包名 com.spektralabcam.android，可与原版 Theia 在同一台手机并存安装，互不覆盖数据。",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Spacer(Modifier.height(20.dp))
