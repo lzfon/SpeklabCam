@@ -1,5 +1,6 @@
 package com.spektralab.android.feature.editor.ui
 
+import kotlin.math.sqrt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -280,6 +281,8 @@ internal fun PhotoCanvas(
 @Composable
 private fun HistogramView(histogram: Histogram, modifier: Modifier = Modifier) {
     Canvas(modifier) {
+        // 有些渲染分支统计不到就交回空数组，别拿它当 256 个桶来读。
+        if (histogram.r.size < 256 || histogram.g.size < 256 || histogram.b.size < 256) return@Canvas
         val maxCount = maxOf(
             histogram.r.maxOrNull() ?: 1,
             histogram.g.maxOrNull() ?: 1,
@@ -290,7 +293,9 @@ private fun HistogramView(histogram: Histogram, modifier: Modifier = Modifier) {
             val path = Path()
             path.moveTo(0f, size.height)
             for (i in 0 until 256) {
-                val h = (bins[i] / maxCount) * size.height
+                // 开根号再映射：一个主峰动辄占走两三成像素，线性刻度会把其余 255 个桶全压成
+                // 贴底的一条线，看着跟没画一样（之前就是这样）。Lightroom 也不是线性刻度。
+                val h = sqrt((bins[i] / maxCount).coerceIn(0f, 1f)) * size.height
                 path.lineTo(i * binWidth, size.height - h)
             }
             path.lineTo(size.width, size.height)
