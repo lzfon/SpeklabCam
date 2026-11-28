@@ -209,10 +209,7 @@ internal fun HomeScreen(
                     HomeLibraryWaterfall(vm, picked, onToggle = { id ->
                         picked = if (picked.contains(id)) picked - id else picked + id
                     }, onOpen = { uri ->
-                        if (!busy) {
-                            vm.openPhotos(listOf(uri))
-                            onOpenEditor()
-                        }
+                        if (!busy && !vm.requestLibraryOpen(uri)) onOpenEditor()
                     })
                 } else {
                     HomePreviewPane(vm, preview, busy, onOpenEditor, onOpenCamera)

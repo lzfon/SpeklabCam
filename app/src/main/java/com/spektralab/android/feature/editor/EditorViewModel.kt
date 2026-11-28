@@ -2775,6 +2775,32 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 单击图库里一张不在当前工作台上的照片：先挂起来问一句「追加还是新建」，
+     *  不再一声不吭地把整组工作台换成这一张（上次工作台 10 张变 1 张就是这么丢的）。
+     *  值 = 待处理照片 + 问话那一刻工作台上的张数。 */
+    var pendingLibraryOpen by mutableStateOf<Pair<Uri, Int>?>(null)
+        private set
+
+    /** 返回 true = 要用户先选（调用方这时别跳转）；false = 已经直接打开 / 切好了。 */
+    fun requestLibraryOpen(uri: Uri): Boolean {
+        if (photos.isEmpty() || uri in photos) {
+            openPhotos(listOf(uri))
+            return false
+        }
+        pendingLibraryOpen = uri to photos.size
+        return true
+    }
+
+    fun resolveLibraryOpen(append: Boolean) {
+        val uri = pendingLibraryOpen?.first ?: return
+        pendingLibraryOpen = null
+        if (append) addPhotos(listOf(uri), openSelected = true) else openPhotos(listOf(uri))
+    }
+
+    fun dismissLibraryOpen() {
+        pendingLibraryOpen = null
+    }
+
     // 打开多张照片（图库），第一张为当前。
     fun openPhotos(uris: List<Uri>) {
         if (isApplyingEdits) return

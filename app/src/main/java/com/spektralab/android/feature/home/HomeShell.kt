@@ -87,9 +87,10 @@ internal fun HomeShell(
                 onBack = { panel = PANEL_NONE },
                 onImport = onImportPhotos,
                 onOpen = { uri ->
-                    vm.openPhotos(listOf(uri))
-                    panel = PANEL_NONE
-                    onOpenEditor()
+                    if (!vm.requestLibraryOpen(uri)) {
+                        panel = PANEL_NONE
+                        onOpenEditor()
+                    }
                 },
                 onAddToViewing = { uris ->
                     vm.loadViewingPhotos(uris)
@@ -144,5 +145,21 @@ internal fun HomeShell(
                 backDescription = "返回首页",
             )
         }
+
+        // 首页路由里只有一个弹窗口：宫格单击和抽屉里图库单击共用它。
+        com.spektralab.android.ui.components.WorkbenchJoinDialog(
+            request = vm.pendingLibraryOpen,
+            onDismiss = vm::dismissLibraryOpen,
+            onAppend = {
+                vm.resolveLibraryOpen(true)
+                panel = PANEL_NONE
+                onOpenEditor()
+            },
+            onNewWorkbench = {
+                vm.resolveLibraryOpen(false)
+                panel = PANEL_NONE
+                onOpenEditor()
+            },
+        )
     }
 }

@@ -195,10 +195,11 @@ internal fun TheiaRoot(vm: EditorViewModel) {
                 onOpenTasks = { route = AppRoute.ExportTasks },
                 onOpenSettings = { route = AppRoute.Settings },
             )
-            AppRoute.SavedPhotos -> com.spektralab.android.feature.gallery.SavedPhotosScreen(
+            AppRoute.SavedPhotos -> {
+                com.spektralab.android.feature.gallery.SavedPhotosScreen(
                 controller = vm.savedPhotos, enabled = !vm.busy && !vm.isExporting && !vm.isBatchExporting,
                 onBack = { route = AppRoute.Home }, onImport = { launchPhotoPicker(false) },
-                onOpen = { uri -> vm.openPhotos(listOf(uri)); route = AppRoute.Editor },
+                onOpen = { uri -> if (!vm.requestLibraryOpen(uri)) route = AppRoute.Editor },
                 onAddToViewing = { uris -> vm.loadViewingPhotos(uris); route = AppRoute.ViewingStand },
                 onAddAllToWorkbench = { uris ->
                     uris.forEach(vm::persistReadPermission)
@@ -212,7 +213,14 @@ internal fun TheiaRoot(vm: EditorViewModel) {
                 prepareVersions = vm::prepareVersionBoundary,
                 versionInUse = { it in vm.photos || it == vm.currentUri },
                 onVersionOpen = { uri -> vm.addPhotos(listOf(uri), openSelected = true); route = AppRoute.Editor },
-            )
+                )
+                com.spektralab.android.ui.components.WorkbenchJoinDialog(
+                    request = vm.pendingLibraryOpen,
+                    onDismiss = vm::dismissLibraryOpen,
+                    onAppend = { vm.resolveLibraryOpen(true); route = AppRoute.Editor },
+                    onNewWorkbench = { vm.resolveLibraryOpen(false); route = AppRoute.Editor },
+                )
+            }
             AppRoute.Editor -> EditorScreen(
                 vm = vm,
                 onBackHome = { route = AppRoute.Home },
