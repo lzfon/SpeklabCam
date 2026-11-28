@@ -62,7 +62,7 @@ class SectionGroup {
 
 val LocalSectionGroup = compositionLocalOf<SectionGroup?> { null }
 
-/** 是否开启「打开一个折叠菜单时自动收起其它」；由设置页写入。 */
+/** 「打开一个折叠菜单时自动收起其它」的开关；目前恒为开（没有提供者可改写），保留给设置页以后接。 */
 val LocalAutoCollapseSections = compositionLocalOf { true }
 
 /** Disclosure changes composition only; it never dispatches an image operation. */
@@ -125,33 +125,7 @@ fun MenuBody(
     if (embedded) content() else EditorSection(title, summary, content = content)
 }
 
-@Composable
-fun ChoiceStrip(options: List<String>, selected: String, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerLow, TheiaShapes.control)) {
-        options.forEach { option ->
-            val isSelected = selected == option
-            androidx.compose.material3.TextButton(
-                onClick = { onSelect(option) },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { this.selected = isSelected },
-                shape = TheiaShapes.control,
-                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                    containerColor = if (selected == option) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent,
-                    contentColor = if (selected == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            ) { Text(option, style = MaterialTheme.typography.labelMedium) }
-        }
-    }
-}
 
-@Composable
-fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)
-    )
-}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -255,45 +229,6 @@ fun OptionsDropdown(
     }
 }
 
-@Composable
-fun StockDropdown(
-    label: String,
-    stocks: List<Stock>,
-    selectedId: String,
-    modifier: Modifier = Modifier,
-    groups: List<Pair<String, List<Stock>>> = emptyList(),
-    onSelect: (Stock) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selected = stocks.find { it.id == selectedId }
-    Box(modifier) {
-        SelectionRow(label, selected?.name ?: "—") { expanded = true }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (groups.isEmpty()) {
-                stocks.forEach { s ->
-                    DropdownMenuItem(
-                        text = { Text(s.name) },
-                        onClick = { onSelect(s); expanded = false }
-                    )
-                }
-            } else {
-                groups.forEach { (title, group) ->
-                    DropdownMenuItem(
-                        text = { Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) },
-                        enabled = false,
-                        onClick = {}
-                    )
-                    group.forEach { s ->
-                        DropdownMenuItem(
-                            text = { Text(s.name) },
-                            onClick = { onSelect(s); expanded = false }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun ActionButton(

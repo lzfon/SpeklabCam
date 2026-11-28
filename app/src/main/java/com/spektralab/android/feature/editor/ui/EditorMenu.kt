@@ -168,7 +168,6 @@ internal class MenuBoardState {
         if (key != null) lastByTab = lastByTab + (tab.name to key)
     }
 
-    fun toggleCollapsed() { collapsed = !collapsed }
 
     /** 当前该展开哪个二级；如果它已经不可用（比如非 RAW 时的前白平衡），自动退回收起。 */
     fun currentSection(tab: EditorTab, vm: EditorViewModel): MenuSection? {

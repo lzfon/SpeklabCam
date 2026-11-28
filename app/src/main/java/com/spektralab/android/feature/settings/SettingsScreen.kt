@@ -45,7 +45,6 @@ internal class SettingsController(context: Context, private val scope: Coroutine
 
     init { refresh(initial = true) }
 
-    fun dismissMessage() { message = null }
 
     fun refresh(initial: Boolean = false) {
         if (busy && !initial) return

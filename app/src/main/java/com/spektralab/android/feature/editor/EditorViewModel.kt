@@ -520,6 +520,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     private var effectThumbDrain: Job? = null
     private val EFFECT_THUMB_QUEUE_LIMIT = 12
     private val thumbnailJobs = mutableMapOf<Uri, Job>()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val thumbnailDispatcher = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)
     private val THUMBNAIL_CACHE_LIMIT = 160
     private val galleryPreviewJobs = mutableMapOf<Uri, Job>()
@@ -2778,6 +2779,15 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun openPhotos(uris: List<Uri>) {
         if (isApplyingEdits) return
         if (uris.isEmpty() || isBatchExporting || isExporting) return
+        // 单击首页 / 图库里那一张时，如果它本来就在工作台上，只切过去看它；
+        // 走下面的整组替换会把工作台其它照片一并抹掉（10 张会变 1 张，且立刻落盘找不回来）。
+        if (uris.size == 1) {
+            val already = photos.indexOf(uris.first())
+            if (already >= 0) {
+                selectPhoto(already)
+                return
+            }
+        }
         saveCurrentSidecar()
         photos = uris.distinct()
         batchExportSelection = photos.toSet()
@@ -2821,9 +2831,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         persistWorkbench()
     }
 
-    fun previousPhoto() {
-        if (currentIndex > 0) selectPhoto(currentIndex - 1)
-    }
 
     fun nextPhoto() {
         if (currentIndex < photos.lastIndex) selectPhoto(currentIndex + 1)
@@ -3619,14 +3626,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-    private fun saveResult(result: SpkResult, suffix: String, editParams: EditorParams = params,
-                           options: ExportOptions = captureExportOptions(), sourceUri: Uri? = currentUri): String {
-        return if (options.format == "TIFF") {
-            saveTiff(result, suffix, editParams, options, sourceUri)
-        } else {
-            saveBitmap(convertToBitmap(result, editParams), suffix, options, sourceUri = sourceUri)
-        }
-    }
 
     private fun saveTiff(result: SpkResult, suffix: String, editParams: EditorParams, options: ExportOptions,
                          sourceUri: Uri? = currentUri): String {
@@ -3741,31 +3740,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             (bitmap.height * scale).roundToInt().coerceAtLeast(1), true)
     }
 
-    private fun resizeRaw(raw: RawDecodeResult, maxLongEdge: Int): RawDecodeResult {
-        val edge = max(raw.width, raw.height)
-        if (maxLongEdge == 0 || edge <= maxLongEdge) return raw
-        val scale = maxLongEdge.toDouble() / edge
-        val width = (raw.width * scale).roundToInt().coerceAtLeast(1)
-        val height = (raw.height * scale).roundToInt().coerceAtLeast(1)
-        val output = FloatArray(width * height * 3)
-        for (y in 0 until height) {
-            val sy = ((y + 0.5) * raw.height / height - 0.5).coerceIn(0.0, (raw.height - 1).toDouble())
-            val y0 = sy.toInt(); val y1 = (y0 + 1).coerceAtMost(raw.height - 1); val fy = sy - y0
-            for (x in 0 until width) {
-                val sx = ((x + 0.5) * raw.width / width - 0.5).coerceIn(0.0, (raw.width - 1).toDouble())
-                val x0 = sx.toInt(); val x1 = (x0 + 1).coerceAtMost(raw.width - 1); val fx = sx - x0
-                val dst = (y * width + x) * 3
-                for (c in 0..2) {
-                    val a = raw.linearProPhoto[(y0 * raw.width + x0) * 3 + c]
-                    val b = raw.linearProPhoto[(y0 * raw.width + x1) * 3 + c]
-                    val d = raw.linearProPhoto[(y1 * raw.width + x0) * 3 + c]
-                    val e = raw.linearProPhoto[(y1 * raw.width + x1) * 3 + c]
-                    output[dst + c] = ((a * (1.0 - fx) + b * fx) * (1.0 - fy) + (d * (1.0 - fx) + e * fx) * fy).toFloat()
-                }
-            }
-        }
-        return RawDecodeResult(width, height, output, raw.make, raw.model, raw.lens, raw.focal, raw.camMul, raw.camXyz)
-    }
 
     override fun onCleared() {
         smartQueueJob?.cancel();smartApplyJob?.cancel()

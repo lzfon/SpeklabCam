@@ -58,7 +58,8 @@ internal fun EditorPhotoStrip(
     onAddPhotos: () -> Unit,
     onSmartDevelop: () -> Unit,
     modifier: Modifier = Modifier,
-    // 挪进工作台组后由控制条的工作台按钮统一折叠，这里就不再自己收。
+    // 工作台组那一档传 false：整组由控制条的工作台按钮统一收，照片条不自己收。
+    // 展开态 / 横屏里内联的照片条仍用默认 true，收它自己没有别的地方能收。
     allowCollapse: Boolean = true,
 ) {
     val enabled = !vm.busy && !vm.isExporting && !vm.isBatchExporting

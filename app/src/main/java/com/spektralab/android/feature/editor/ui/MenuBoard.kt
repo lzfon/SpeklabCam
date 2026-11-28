@@ -141,28 +141,6 @@ internal fun EditorMenuBoard(
     }
 }
 
-/** 平板 / 横屏的菜单板：跟竖屏一套药丸与面板，只是整列跟着页面滚，不再自己占高度。 */
-@Composable
-internal fun WideMenuBoard(
-    vm: EditorViewModel,
-    tab: EditorTab,
-    state: MenuBoardState,
-    modifier: Modifier = Modifier,
-) {
-    val sections = EditorMenu.visibleSections(tab, vm)
-    val open = state.currentSection(tab, vm)
-    var shown by remember { mutableStateOf<MenuSection?>(null) }
-    if (open != null) shown = open
-    Column(modifier.fillMaxWidth()) {
-        if (sections.isEmpty()) return
-        MenuSectionChips(sections, if (state.collapsed) null else state.openKey,
-            onSection = { state.toggleSection(it) })
-        AnimatedVisibility(visible = !state.collapsed && open != null,
-            enter = MenuEnter, exit = MenuExit, label = "menu-level3-wide") {
-            shown?.let { section -> MenuParameterPanel(vm, section) }
-        }
-    }
-}
 
 /** 二级菜单那一排药丸：图标在上、短名在下，横向可滑；点开的那颗用主题绿。 */
 @Composable
