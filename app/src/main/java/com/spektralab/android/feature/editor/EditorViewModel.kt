@@ -1203,12 +1203,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         val bitmap = withContext(Dispatchers.IO) { EffectThumbnailStore.get(app, key.first, key.second) } ?: return
         if (inStand) viewingPhotos = viewingPhotos.map { if (it.first == name) name to bitmap else it }
         effectThumbKeys = effectThumbKeys + name
-        if (inStrip) {
-            // 照片条那张是按原图解的，丢掉重取；这次会命中刚落盘的效果图。
-            thumbnails = thumbnails - uri
-            thumbnailJobs.remove(uri)?.cancel()
-            loadThumbnail(uri)
-        }
+        // 照片条那张是按原图解的，重取一次；这次会命中刚落盘的效果图，到了才替换，不闪空白。
+        if (inStrip) loadThumbnail(uri, replace = true)
     }
 
     /** 观片台／工作台的缩略图里，哪些是用落盘的效果图显示的：据此标「成品」并让放大也沿用效果。 */
@@ -2864,15 +2860,17 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     // 懒加载单个缩略图（滚到才解码）。
     // 只允许 2 路并发解码：照片上百张时一次性并发解码会瞬间吃满内存和 IO，把整个界面卡死。
-    fun loadThumbnail(uri: Uri) {
-        if (uri !in photos || thumbnails.containsKey(uri) || thumbnailJobs[uri]?.isActive == true) return
+    /** replace = true：屏上已经是按原图解的那一张，现在要换成刚落盘的效果图。
+     *  不先清空缓存，新图取到才替换，避免照片条整格闪一下白。 */
+    fun loadThumbnail(uri: Uri, replace: Boolean = false) {
+        if (uri !in photos || (!replace && thumbnails.containsKey(uri)) || thumbnailJobs[uri]?.isActive == true) return
         val request = viewModelScope.launch {
             try {
                 var fromEffect = false
                 val bmp = withContext(thumbnailDispatcher) {
                     effectThumbFor(uri)?.also { fromEffect = true } ?: decodeSampled(uri, 200)
                 }
-                if (uri in photos && !thumbnails.containsKey(uri)) {
+                if (uri in photos && (replace || !thumbnails.containsKey(uri))) {
                     if (fromEffect) effectThumbKeys = effectThumbKeys + uri.toString()
                     val next = LinkedHashMap(thumbnails)
                     next[uri] = bmp

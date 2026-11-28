@@ -116,6 +116,13 @@ internal class SavedPhotosController(private val context: Context, private val s
     fun thumbnail(photo: SavedPhoto) {
         visibleThumbnails += photo.assetId
         if (thumbnails.containsKey(photo.assetId) || thumbJobs[photo.assetId]?.isActive == true) return
+        loadThumbnail(photo)
+    }
+
+    /** 取一张缩略图放进缓存。屏上已经有画面时不先清空：新图取到才替换，
+     *  否则首页宫格会出现整格只有占位图标的空位，要滚出屏幕再滚回来才补上。 */
+    private fun loadThumbnail(photo: SavedPhoto) {
+        thumbJobs.remove(photo.assetId)?.cancel()
         thumbJobs[photo.assetId] = scope.launch {
             try {
                 val bitmap = withContext(Dispatchers.IO) { reads.withPermit {
@@ -142,18 +149,19 @@ internal class SavedPhotosController(private val context: Context, private val s
         thumbnails = trimThumbnails(LinkedHashMap(thumbnails))
     }
 
-    /** 列表刷新后，把参数已经改过、效果图也已换版的行从内存里摘掉，下一帧重画时自然读到新的成品缩略图。 */
+    /** 列表刷新后，参数已经改过版的行重新取一次：正在显示的那几张留着旧画面等 replacement，
+     *  屏幕外的直接丢掉，回到视口时自然按新参数取。 */
     private fun dropStaleThumbnails() {
         if (thumbnailRevisions.isEmpty()) return
-        val stale = thumbnails.keys.filter { id ->
-            val row = photos.firstOrNull { it.assetId == id } ?: return@filter true
-            thumbnailRevisions[id] != row.revision
-        }
-        if (stale.isEmpty()) return
-        stale.forEach {
-            thumbnails = thumbnails - it
-            thumbnailRevisions -= it
-            thumbJobs.remove(it)?.cancel()
+        photos.forEach { row ->
+            val seen = thumbnailRevisions[row.assetId] ?: return@forEach
+            if (seen == row.revision) return@forEach
+            if (row.assetId in visibleThumbnails) loadThumbnail(row)
+            else {
+                thumbnails = thumbnails - row.assetId
+                thumbnailRevisions -= row.assetId
+                thumbJobs.remove(row.assetId)?.cancel()
+            }
         }
     }
 
@@ -337,14 +345,19 @@ internal class SavedPhotosController(private val context: Context, private val s
         return EffectThumbnailStore.get(context, photo.assetId, latest.revision)
     }
 
-    /** 编辑页刚落盘一张效果图：把内存里这张的旧画面摘掉，正在显示的行下一帧重新取。 */
+    /** 编辑页刚落盘一张效果图：正在显示的这张后台重取，新图到了才替换旧画面；
+     *  没在屏幕上的先丢掉，等它进视口再取。全程不出现空白格。 */
     fun invalidateThumbnail(assetId: String) {
-        val cached = thumbnails.containsKey(assetId)
-        if (!cached && thumbJobs[assetId]?.isActive != true) return
-        thumbnails = thumbnails - assetId
-        thumbnailRevisions -= assetId
-        thumbJobs.remove(assetId)?.cancel()
-        if (assetId in visibleThumbnails) photos.firstOrNull { it.assetId == assetId }?.let(::thumbnail)
+        val row = photos.firstOrNull { it.assetId == assetId }
+        if (row != null && assetId in visibleThumbnails) {
+            loadThumbnail(row)
+            return
+        }
+        if (thumbnails.containsKey(assetId) || thumbnailRevisions.containsKey(assetId)) {
+            thumbnails = thumbnails - assetId
+            thumbnailRevisions -= assetId
+            thumbJobs.remove(assetId)?.cancel()
+        }
     }
 
     private fun decode(uri: Uri): Bitmap? {
