@@ -40,6 +40,20 @@ internal object EffectThumbnailStore {
         BitmapFactory.decodeFile(source.path)
     }.getOrNull()
 
+    /** 复制一张长边不超过 512 的小图，供排队落盘用。
+     *  渲染帧随时会被下一帧顶掉、切换照片时还会被回收，所以必须先把像素攥在自己手里，
+     *  不然连续翻片时「刚渲染完那张」的效果图就丢了。返回值永远是新实例，归调用方回收。 */
+    fun snapshot(source: Bitmap): Bitmap {
+        val width = source.width
+        val height = source.height
+        if (width <= 0 || height <= 0 || source.isRecycled) throw IllegalStateException("EFFECT_THUMB_SOURCE_UNUSABLE")
+        val ratio = MAX_EDGE.toFloat() / maxOf(width, height)
+        val scaled = if (ratio < 1f)
+            Bitmap.createScaledBitmap(source, (width * ratio).toInt().coerceAtLeast(1),
+                (height * ratio).toInt().coerceAtLeast(1), true) else source
+        return if (scaled !== source) scaled else source.copy(source.config ?: Bitmap.Config.ARGB_8888, false)
+    }
+
     /** 落盘一张效果图：从渲染帧缩到长边 512 再编码；返回是否真的写了（同键已有也算成功）。 */
     fun put(context: Context, assetId: String, revision: Long, bitmap: Bitmap): Boolean {
         if (bitmap.isRecycled) return false

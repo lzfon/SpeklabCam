@@ -513,7 +513,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         set(value) { field = value; trackPreviewWork(value) }
     private var stockPreviewJob: Job? = null
     private var developedPreviewJob: Job? = null
-    private var effectThumbJob: Job? = null
+    /** 待落盘的效果图队列：静帧一到就复制一张 512 小图排队，由后台一条队列一张一张写。
+     *  渲染帧会被下一帧顶掉、切照片时还会被回收，所以不能等 600ms 再取原帧——
+     *  在工作台里快速连翻 10 张时，那样每张只要停留不够就全丢了（首页/图库个别没效果的原因）。 */
+    private val effectThumbQueue = java.util.concurrent.ConcurrentLinkedQueue<Pair<Uri, Bitmap>>()
+    private var effectThumbDrain: Job? = null
+    private val EFFECT_THUMB_QUEUE_LIMIT = 12
     private val thumbnailJobs = mutableMapOf<Uri, Job>()
     private val thumbnailDispatcher = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)
     private val THUMBNAIL_CACHE_LIMIT = 160
@@ -1163,33 +1168,45 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
             if (photo == photoGeneration && uri == currentUri && uri in photos && rendered === bitmap) {
                 developedPreviews = developedPreviews + (uri to preview)
-                if (!gesturePending) queueEffectThumbnail(uri, bitmap, photo)
+                if (!gesturePending) queueEffectThumbnail(uri, preview)
             }
         }
     }
 
-    /** 画面稳定下来后落一张长边 512 的效果图缩略图：首页宫格、图库和观片台据此直接显示调过参数的成品，
-     *  不必为了缩略图重跑引擎。键是「记录身份 + 当时的参数修订号」，参数再改一版，旧的那张自动失效；
-     *  写失败或缓存被系统清掉都不提示，界面退回原图。 */
-    private fun queueEffectThumbnail(uri: Uri, bitmap: Bitmap, generation: Long) {
-        effectThumbJob?.cancel()
-        effectThumbJob = viewModelScope.launch {
-            // 比内存缩略图多等一些：连续出帧时只留最后一次，省掉中间的重复编码。
-            delay(600)
-            if (generation != photoGeneration || uri != currentUri || rendered !== bitmap || isExporting || isBatchExporting) return@launch
-            if (sceneCurveStart != null || curveStart != null || colorStart != null || mixerStart != null || wheelStart != null) return@launch
-            if (bitmap.isRecycled) return@launch
-            val key = withContext(Dispatchers.IO) { runCatching { EditStore.savedPhotoKey(app, uri) }.getOrNull() }
-            if (key == null) {
-                android.util.Log.i("SpekEffect", "skip: 库里查不到这条记录 $uri")
-                return@launch
+    /** 静帧排队落盘：首页宫格、图库和观片台据此显示调过参数的成品，不必为缩略图重跑引擎。
+     *  同一张只留最新一帧；键（记录身份 + 参数修订号）到真正写的时候才去库里取，
+     *  那时切换照片前的编辑已经落库，修订号就是新的那一版。 */
+    private fun queueEffectThumbnail(uri: Uri, bitmap: Bitmap) {
+        val small = runCatching { EffectThumbnailStore.snapshot(bitmap) }.getOrNull() ?: return
+        effectThumbQueue.removeAll { entry ->
+            if (entry.first != uri) false else { runCatching { entry.second.recycle() }; true }
+        }
+        while (effectThumbQueue.size >= EFFECT_THUMB_QUEUE_LIMIT)
+            effectThumbQueue.poll()?.let { runCatching { it.second.recycle() } }
+        effectThumbQueue.add(uri to small)
+        drainEffectThumbnails()
+    }
+
+    private fun drainEffectThumbnails() {
+        if (effectThumbDrain?.isActive == true) return
+        effectThumbDrain = viewModelScope.launch(Dispatchers.Default) {
+            while (true) {
+                val next = effectThumbQueue.poll() ?: break
+                // 一次只写一张，写完歇一下再写下一张：把 GPU/CPU 让给正在显示的编辑页。
+                delay(350)
+                val key = withContext(Dispatchers.IO) { runCatching { EditStore.savedPhotoKey(app, next.first) }.getOrNull() }
+                if (key == null) {
+                    android.util.Log.i("SpekEffect", "skip: 库里查不到这条记录 ${next.first}")
+                } else if (EffectThumbnailStore.put(app, key.first, key.second, next.second)) {
+                    // 刚落盘就主动换新画面：正在显示的首页宫格、图库行、观片台卡片下一帧就是效果图，
+                    // 不等列表重新拉取，也不依赖从编辑页返回时有没有触发 refresh()。
+                    withContext(Dispatchers.Main.immediate) {
+                        savedPhotos.invalidateThumbnail(key.first)
+                        refreshViewingEffect(next.first, key)
+                    }
+                }
+                runCatching { next.second.recycle() }
             }
-            val written = withContext(Dispatchers.Default) { EffectThumbnailStore.put(app, key.first, key.second, bitmap) }
-            if (!written) return@launch
-            // 刚落盘就主动把旧画面摘掉：正在显示的首页宫格、图库行、观片台卡片下一帧就换成效果图，
-            // 不等列表重新拉取，也不依赖从编辑页返回时有没有触发 refresh()。
-            savedPhotos.invalidateThumbnail(key.first)
-            refreshViewingEffect(uri, key)
         }
     }
 
@@ -2486,7 +2503,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         cameraWbJob?.cancel()
         stockPreviewJob?.cancel()
         developedPreviewJob?.cancel()
-        effectThumbJob?.cancel()
+        // 待写的效果图不能跟着取消：切到下一张时上一张的编辑刚落库，正是该写的时候。
+        drainEffectThumbnails()
         pendingFrame = null
         engine?.cancel()
         return photoGeneration
