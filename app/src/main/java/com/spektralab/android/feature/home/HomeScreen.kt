@@ -535,6 +535,30 @@ private fun HomePreviewPane(
             }
         }
     } else {
+        // 预览框形式但编辑页还没载入照片（刚打开 App）：别空着一句「打开系统相机拍摄」，
+        // 工作台里有活就该把当前那张摆上来。
+        HomeSessionPane(vm, busy, onOpenEditor, onOpenCamera)
+    }
+}
+
+/** 首页预览框在冷启动时的样子：读工作台存档「当前那张」的画面——渲染过的取效果图缓存，
+ *  没渲染过的解一张原片；点一下＝恢复工作台并进编辑页。
+ *  确实没有存档（或画面读不出来）才退回原来的相机引导。 */
+@Composable
+private fun HomeSessionPane(
+    vm: EditorViewModel,
+    busy: Boolean,
+    onOpenEditor: () -> Unit,
+    onOpenCamera: () -> Unit,
+) {
+    var shot by remember { mutableStateOf<Bitmap?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        shot = vm.sessionPreview()
+        loaded = true
+    }
+    val bitmap = shot
+    if (loaded && bitmap == null) {
         Surface(
             modifier = Modifier.fillMaxSize().clickable(enabled = !busy, onClick = onOpenCamera),
             color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -549,6 +573,33 @@ private fun HomePreviewPane(
                 Text("拍完回到这里，新照片按当前配方直接冲印。", Modifier.padding(top = 6.dp),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    } else if (bitmap != null) {
+        Box(
+            Modifier.fillMaxSize()
+                .clip(TheiaShapes.panel)
+                .background(Color.Black)
+                .clickable(role = Role.Button, enabled = !busy) {
+                    vm.savedPhotos.restoreSession { session ->
+                        vm.restoreWorkbench(session)
+                        onOpenEditor()
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(bitmap = bitmap.asImageBitmap(), contentDescription = "继续显影",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+            Text("工作台当前照片 · 点开继续显影",
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 86.dp)
+                    .background(Color.Black.copy(alpha = .45f), TheiaShapes.badge)
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1)
+        }
+    } else {
+        Box(Modifier.fillMaxSize()) {
+            CircularProgressIndicator(Modifier.align(Alignment.Center).size(22.dp),
+                strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

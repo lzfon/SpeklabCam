@@ -1237,6 +1237,15 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         EffectThumbnailStore.get(app, key.first, key.second)
     }.getOrNull()
 
+    /** 首页预览框在冷启动时用的画面：编辑页一张照片都还没载入，直接去工作台存档里拿「当前那张」——
+     *  渲染过的取效果图缓存，没渲染过的解一张原片。都在后台线程做，读不到就返回 null（首页退回相机引导）。
+     *  以前首页只认编辑页内存里那张，所以刚打开 App 时明明有工作台，预览框却空着说「打开系统相机拍摄」。 */
+    suspend fun sessionPreview(): Bitmap? = withContext(Dispatchers.IO) {
+        val current = runCatching { EditStore.savedSession(app)?.current }.getOrNull() ?: return@withContext null
+        val uri = runCatching { Uri.parse(current) }.getOrNull() ?: return@withContext null
+        effectThumbFor(uri) ?: runCatching { decodeSampled(uri, 900) }.getOrNull()
+    }
+
     /** Add gallery photos to the independent viewing-stand queue. */
     fun loadViewingPhotos(uris: List<Uri>) {
         if (uris.isEmpty()) return
