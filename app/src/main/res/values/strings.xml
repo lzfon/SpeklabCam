@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">SpeklabCam</string>
     <string name="curve_title">曲线</string>
-    <string name="curve_summary">明暗与分通道 · 冲印后的精细调整</string>
     <string name="curve_rgb">RGB</string>
     <string name="curve_luma">明度</string>
     <string name="curve_red">红</string>
@@ -97,7 +96,6 @@
     <string name="edit_clear_selection">清空选择</string>
     <string name="edit_no_targets">请先添加其他照片，再复制编辑设置。</string>
     <string name="edit_continue_targets">下一步：选择照片</string>
-    <string name="edit_save_current">将当前调整保存为预设</string>
     <string name="edit_apply_count">应用到 %1$d 张照片</string>
     <string name="edit_applied_count">已应用编辑设置到 %1$d 张照片</string>
     <string name="edit_save">保存</string>
@@ -241,7 +239,6 @@
     <string name="photos_save_error">保存尚未完成</string>
     <string name="photos_understood">保留当前页面</string>
     <string name="photos_storage_failure">编辑设置暂未保存，可能是存储不可用或旧记录不兼容。当前调整仍在，请保留此页面并重试。</string>
-    <string name="photos_storage_exception">编辑记录无法读取或保存，原有数据已保留，请重试。</string>
     <string name="table_projects">观片台项目</string>
     <string name="table_close_list">关闭项目列表</string>
     <string name="table_project_actions">项目操作：%1$s</string>
@@ -289,7 +286,6 @@
     <string name="table_in_use">请先关闭当前项目，再删除它。</string>
     <string name="table_storage_error">项目无法读取或保存，原记录已保留，请重试。</string>
     <string name="table_done">完成</string>
-    <string name="table_item_actions">调整 %1$s 的摆放</string>
     <string name="table_output">导出观片台</string>
     <string name="table_output_default_title">光的收藏</string>
     <string name="table_output_hint">按当前布局重新生成成品，原项目保持不变。</string>

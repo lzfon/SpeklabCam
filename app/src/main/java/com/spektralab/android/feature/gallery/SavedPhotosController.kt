@@ -21,6 +21,9 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 /** Metadata loads and at most two bounded thumbnail reads; never starts the film engine. */
+
+/** 列表缩略图的长边：与 EffectThumbnailStore.MAX_EDGE 保持一致。 */
+private const val THUMB_EDGE = 512
 internal class SavedPhotosController(private val context: Context, private val scope: CoroutineScope) {
     val organization = PhotoOrganizationController(context, scope, ::refresh)
     val versions = EditVersionsController(context, scope)
@@ -144,9 +147,12 @@ internal class SavedPhotosController(private val context: Context, private val s
     }
     fun cancelThumbnail(id: String) {
         visibleThumbnails -= id
-        thumbnailRevisions -= id
         thumbJobs.remove(id)?.cancel()
         thumbnails = trimThumbnails(LinkedHashMap(thumbnails))
+        // 修订号跟着缓存位图走：位图还在，记录就还得留着，否则刷新时没人知道这行已经旧了。
+        // 之前是无条件清记录，结果是这行滚出屏幕期间参数改过版，回到视口时缓存里那张旧效果图
+        // 会一直显示下去（首页宫格、图库都会碰到）。
+        if (!thumbnails.containsKey(id)) thumbnailRevisions -= id
     }
 
     /** 列表刷新后，参数已经改过版的行重新取一次：正在显示的那几张留着旧画面等 replacement，
@@ -361,12 +367,14 @@ internal class SavedPhotosController(private val context: Context, private val s
     }
 
     private fun decode(uri: Uri): Bitmap? {
+        // 512 跟编辑页落盘的效果图同一档：原来解 384，同一屏里渲染过的那几张明显更清晰，
+        // 未渲染的反而糊，看着像两种画质。
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth > 0 && bounds.outHeight > 0) {
             val options = BitmapFactory.Options().apply {
                 inSampleSize = 1
-                while (maxOf(bounds.outWidth, bounds.outHeight) / inSampleSize > 384) inSampleSize *= 2
+                while (maxOf(bounds.outWidth, bounds.outHeight) / inSampleSize > THUMB_EDGE) inSampleSize *= 2
             }
             return context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
         }
@@ -376,7 +384,7 @@ internal class SavedPhotosController(private val context: Context, private val s
         BitmapFactory.decodeByteArray(embedded, 0, embedded.size, header)
         val options = BitmapFactory.Options().apply {
             inSampleSize = 1
-            while (maxOf(header.outWidth, header.outHeight) / inSampleSize > 384) inSampleSize *= 2
+            while (maxOf(header.outWidth, header.outHeight) / inSampleSize > THUMB_EDGE) inSampleSize *= 2
         }
         return BitmapFactory.decodeByteArray(embedded, 0, embedded.size, options)
     }

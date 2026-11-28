@@ -128,10 +128,13 @@ internal fun LibraryFilterBar(controller: SavedPhotosController, enabled: Boolea
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             // 滚动到顶后计数让位，但保留占位，让右边那行字仍贴右边缘。
-            if (compact) Spacer(Modifier.weight(1f)) else
-            Text(stringResource(R.string.library_result_count, controller.matchingCount, controller.totalCount),
-                Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (compact) {
+                Spacer(Modifier.weight(1f))
+            } else {
+                Text(stringResource(R.string.library_result_count, controller.matchingCount, controller.totalCount),
+                    Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             // 多选态：原来单独那条「选中 N 张…放入」并进这一行，位置就是恢复入口的位置。
             if (putCount != null) TextButton(onClick = onPut, enabled = putEnabled,
                 contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.height(40.dp)) {

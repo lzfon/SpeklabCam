@@ -59,6 +59,12 @@ internal fun TheiaRoot(vm: EditorViewModel) {
 
     /** 导入前先要「照片位置信息」权限：导入那一刻选择器授权还在，是唯一能读到原片 GPS 的时机。 */
     fun withMediaLocation(action: () -> Unit) {
+        if (android.os.Build.VERSION.SDK_INT < 29) {
+            // ACCESS_MEDIA_LOCATION 是 API 29 才有的权限。8.x / 9 上问了也只会被拒，
+            // 反而白白多弹一次，直接放过去读位置（那些版本读原片本来就带 EXIF）。
+            action()
+            return
+        }
         val granted = androidx.core.content.ContextCompat.checkSelfPermission(
             mediaLocationContext, android.Manifest.permission.ACCESS_MEDIA_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
